@@ -1,0 +1,152 @@
+[
+  {
+    "is_code": "IS 269: 1989",
+    "product_category": "Ordinary Portland Cement (33, 43, 53 Grade)",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "CRITICAL: Under DPIIT Cement QCO 2023, manufacturing, stocking, or procuring cement without BIS License/ISI Mark is a punishable offense under BIS Act 2016. Tenders must require valid BIS License (CML Number) submission."
+  },
+  {
+    "is_code": "IS 455: 1989",
+    "product_category": "Portland Slag Cement",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "MANDATORY: Portland Slag Cement requires mandatory BIS certification mark under DPIIT Cement QCO 2023. Uncertified vendors must be disqualified at technical evaluation."
+  },
+  {
+    "is_code": "IS 1489 (Part 1): 1991",
+    "product_category": "Portland Pozzolana Cement (Fly Ash Based)",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "MANDATORY: PPC (Part 1) falls under mandatory BIS Scheme-I. Tender technical specifications must mandate ISI mark on all bags/bulk supplies."
+  },
+  {
+    "is_code": "IS 1489 (Part 2): 1991",
+    "product_category": "Portland Pozzolana Cement (Calcined Clay Based)",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "MANDATORY: PPC (Part 2) is governed by DPIIT Cement QCO 2023. Valid BIS mark mandatory."
+  },
+  {
+    "is_code": "IS 8043: 1991",
+    "product_category": "Hydrophobic Portland Cement",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "MANDATORY: Requires mandatory BIS Certification (ISI Mark) under Cement QCO."
+  },
+  {
+    "is_code": "IS 8112: 1989",
+    "product_category": "43 Grade Ordinary Portland Cement",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "MANDATORY: 43 Grade OPC requires mandatory BIS License under DPIIT Cement QCO 2023."
+  },
+  {
+    "is_code": "IS 12269: 1987",
+    "product_category": "53 Grade Ordinary Portland Cement",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "MANDATORY: High strength 53 Grade OPC must bear standard ISI mark under Cement QCO."
+  },
+  {
+    "is_code": "IS 1786: 2008",
+    "product_category": "High Strength Deformed Steel Bars & Wires (TMT Rebars)",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "Ministry of Steel",
+    "order_name": "Steel and Steel Products (Quality Control) Order, 2020",
+    "effective_date": "2020-12-22",
+    "compliance_warning": "CRITICAL: TMT Reinforcement Bars (IS 1786) are strictly mandated under Ministry of Steel QCO 2020. Tenders must require test certificates for chemical & mechanical properties and valid CML license."
+  },
+  {
+    "is_code": "IS 2062: 2011",
+    "product_category": "Hot Rolled Medium and High Tensile Structural Steel",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "Ministry of Steel",
+    "order_name": "Steel and Steel Products (Quality Control) Order, 2020",
+    "effective_date": "2020-12-22",
+    "compliance_warning": "MANDATORY: Structural Steel sections must bear ISI mark under Steel QCO 2020."
+  },
+  {
+    "is_code": "IS 4984: 1995",
+    "product_category": "High Density Polyethylene Pipes for Water Supply (HDPE)",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Chemicals & Fertilizers)",
+    "order_name": "Polyethylene Pipes and Fittings (Quality Control) Order, 2023",
+    "effective_date": "2023-08-11",
+    "compliance_warning": "MANDATORY: HDPE pipes for potable water supply require mandatory BIS Certification under PE Pipes QCO."
+  },
+  {
+    "is_code": "IS 4985: 2000",
+    "product_category": "Unplasticized PVC Pipes for Potable Water Supplies (UPVC)",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Chemicals & Fertilizers)",
+    "order_name": "Polyvinyl Chloride (PVC) Pipes (Quality Control) Order, 2023",
+    "effective_date": "2023-08-11",
+    "compliance_warning": "MANDATORY: UPVC Pipes for potable water supply require mandatory ISI certification."
+  },
+  {
+    "is_code": "IS 694: 2010",
+    "product_category": "PVC Insulated Cables for Working Voltages up to 1100 V",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Electrical Wires and Cables (Quality Control) Order, 2023",
+    "effective_date": "2023-09-20",
+    "compliance_warning": "CRITICAL: Electrical building wires (IS 694) are mandatory under Electrical Wires QCO 2023. Uncertified wires pose fire safety hazards and cannot be procured by government agencies."
+  },
+  {
+    "is_code": "IS 13252 (Part 1): 2010",
+    "product_category": "Information Technology Equipment - General Safety",
+    "scheme_type": "Scheme-II (Compulsory Registration Scheme - CRS)",
+    "is_mandatory": true,
+    "issuing_ministry": "MeitY (Ministry of Electronics and Information Technology)",
+    "order_name": "Electronics and IT Goods (Requirements for Compulsory Registration) Order",
+    "effective_date": "2013-04-03",
+    "compliance_warning": "MANDATORY: IT equipment (Servers, Laptops, Printers) requires mandatory registration under MeitY Compulsory Registration Scheme (CRS). Vendor must supply valid R-Number (Registration Number)."
+  },
+  {
+    "is_code": "IS 16046 (Part 2): 2018",
+    "product_category": "Lithium Secondary Cells and Batteries",
+    "scheme_type": "Scheme-II (Compulsory Registration Scheme - CRS)",
+    "is_mandatory": true,
+    "issuing_ministry": "MeitY (Ministry of Electronics and Information Technology)",
+    "order_name": "Electronics and IT Goods (Requirements for Compulsory Registration) Order",
+    "effective_date": "2019-01-01",
+    "compliance_warning": "MANDATORY: Li-ion battery cells require mandatory MeitY CRS registration. Essential for solar energy storage, laptops, and mobile equipment tenders."
+  },
+  {
+    "is_code": "IS 4151: 2015",
+    "product_category": "Protective Helmets for Two Wheeler Riders",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "Ministry of Road Transport and Highways (MoRTH)",
+    "order_name": "Protective Helmets for Two Wheeler Riders (Quality Control) Order, 2020",
+    "effective_date": "2021-06-01",
+    "compliance_warning": "MANDATORY: Two-wheeler safety helmets must strictly bear ISI standard mark under MoRTH notification. Procurement of non-ISI helmets by police/defense/security is illegal."
+  }
+]

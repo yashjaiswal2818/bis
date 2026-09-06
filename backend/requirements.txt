@@ -1,0 +1,22 @@
+# Core Embeddings & NLP (CPU-Optimized)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0
+transformers>=4.40.0
+sentence-transformers>=3.0.0
+
+# Vector & Lexical Search
+faiss-cpu>=1.8.0
+rank-bm25>=0.2.2
+
+# PDF & Document Parsing
+pymupdf>=1.24.0
+
+# API & Web Server
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pydantic>=2.7.0
+python-multipart>=0.0.9
+
+# Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0

@@ -1,0 +1,33 @@
+# Virtual Environments
+venv/
+backend/venv/
+.venv/
+env/
+.env
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Model & Cache Artifacts
+.cache/
+huggingface/
+*.tar
+*.tar.gz
+
+# Frontend Build
+node_modules/
+frontend/node_modules/
+dist/
+.next/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

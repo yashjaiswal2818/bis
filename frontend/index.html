@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIS Indian Standards Recommendation Engine</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="logo-badge">BIS</div>
+        <div>
+          <h1>Indian Standards Recommendation Engine</h1>
+          <p class="subtitle">AI-Powered Procurement Specifications & Mandatory QCO Compliance for GeM / CPPP</p>
+        </div>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot online"></span>
+        <span id="backend-status">Checking Backend...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <div class="tabs-container">
+      <button class="tab-btn active" data-tab="search-tab">🔍 Semantic Search</button>
+      <button class="tab-btn" data-tab="tender-tab">📄 Tender & BoQ Auditor</button>
+      <button class="tab-btn" data-tab="sandbox-tab">⚖️ Judge Evaluation Sandbox</button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <!-- Tab 1: Semantic Search -->
+    <section id="search-tab" class="tab-content active">
+      <div class="search-card">
+        <label for="query-input" class="search-label">Product Description, Technical Specification, or Standard ID:</label>
+        <div class="search-bar">
+          <input type="text" id="query-input" placeholder="e.g. We are manufacturing 33 Grade Ordinary Portland Cement..." autocomplete="off">
+          <button id="search-btn" class="btn btn-primary">Recommend Standards</button>
+        </div>
+
+        <div class="quick-chips">
+          <span class="chip-label">Try sample queries:</span>
+          <button class="chip" data-query="We are a small enterprise manufacturing 33 Grade Ordinary Portland Cement. Which BIS standard covers requirements?">🏗️ 33 Grade Cement</button>
+          <button class="chip" data-query="I need coarse and fine aggregates derived from natural sources for structural concrete.">🧱 Aggregates (IS 383)</button>
+          <button class="chip" data-query="Specifications for precast concrete pipes with and without reinforcement for water mains.">💧 Concrete Pipes (IS 458)</button>
+          <button class="chip" data-query="PVC insulated cables for working voltages up to 1100 V for electrical building wiring.">⚡ Electrical Wires (IS 694)</button>
+          <button class="chip" data-query="भवन निर्माण के लिए फ्लाई ऐश सीमेंट मानक">🇮🇳 सीमेंट मानक (Hindi)</button>
+        </div>
+      </div>
+
+      <!-- Results Area -->
+      <div id="results-container" class="results-container" style="display: none;">
+        <div class="results-header">
+          <h2>Recommended Indian Standards</h2>
+          <span id="latency-tag" class="badge badge-neutral">Latency: 0.45s</span>
+        </div>
+        <div id="results-list" class="cards-list"></div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Tender Document Auditor -->
+    <section id="tender-tab" class="tab-content">
+      <div class="card">
+        <h2>Tender Document & BoQ Auditor</h2>
+        <p class="description">Upload a draft Notice Inviting Tender (PDF) or Bill of Quantities (CSV) to automatically extract technical clauses, red-flag outdated standards, and map required Indian Standards.</p>
+        
+        <div class="dropzone" id="tender-dropzone">
+          <div class="dropzone-icon">📁</div>
+          <p>Drag and drop your <strong>Tender PDF</strong> or <strong>BoQ CSV</strong> here, or click to browse</p>
+          <input type="file" id="tender-file-input" accept=".pdf,.csv" style="display: none;">
+        </div>
+
+        <div id="tender-results" style="display: none; margin-top: 1.5rem;">
+          <h3>Audit Results</h3>
+          <div id="tender-audit-summary"></div>
+          <div id="tender-clauses-list" class="cards-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Judge Evaluation Sandbox -->
+    <section id="sandbox-tab" class="tab-content">
+      <div class="card">
+        <div class="sandbox-header">
+          <h2>Official Hackathon Evaluation Sandbox</h2>
+          <span class="badge badge-accent">SIH Benchmark Scoring</span>
+        </div>
+        <p class="description">Run automated offline evaluation against <code>public_test_set.json</code> or drop your private evaluation dataset to verify Hit@3, MRR@5, and Average Latency.</p>
+
+        <div class="sandbox-actions">
+          <button id="run-eval-btn" class="btn btn-primary">🚀 Run Benchmark (public_test_set.json)</button>
+          <button id="download-results-btn" class="btn btn-secondary" style="display: none;">💾 Download team_results.json</button>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="metrics-grid" id="metrics-grid" style="display: none;">
+          <div class="metric-card" id="metric-hit">
+            <span class="metric-title">Hit Rate @ 3</span>
+            <span class="metric-value" id="hit-value">100.0%</span>
+            <span class="metric-target">Target: &gt; 80%</span>
+          </div>
+          <div class="metric-card" id="metric-mrr">
+            <span class="metric-title">MRR @ 5</span>
+            <span class="metric-value" id="mrr-value">0.933</span>
+            <span class="metric-target">Target: &gt; 0.70</span>
+          </div>
+          <div class="metric-card" id="metric-lat">
+            <span class="metric-title">Average Latency</span>
+            <span class="metric-value" id="lat-value">0.45s</span>
+            <span class="metric-target">Target: &lt; 5.0s</span>
+          </div>
+        </div>
+
+        <div id="sandbox-log" class="console-box" style="display: none;"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- GeM Specification Modal -->
+  <div id="gem-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">GeM Technical Specification Clause</h3>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Copy this legally verified clause directly into Section IV (Technical Requirements) of your GeM or CPPP tender document:</p>
+        <textarea id="gem-clause-text" rows="12" readonly></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="copy-clause-btn" class="btn btn-primary">📋 Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
