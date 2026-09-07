@@ -11,18 +11,32 @@ from pathlib import Path
 
 PORT = 3000
 FRONTEND_DIR = Path(__file__).resolve().parent
+DIST_DIR = FRONTEND_DIR / "dist"
+SERVE_DIR = DIST_DIR if DIST_DIR.exists() else FRONTEND_DIR
+
+
+class SPARequestHandler(http.server.SimpleHTTPRequestHandler):
+    """Custom HTTP handler serving React SPA assets with index.html fallback."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=str(SERVE_DIR), **kwargs)
+
+    def do_GET(self):
+        # Fallback to index.html if requested path does not exist
+        path = self.translate_path(self.path)
+        if not os.path.exists(path):
+            self.path = "/index.html"
+        return super().do_GET()
 
 
 def run_server():
-    os.chdir(FRONTEND_DIR)
-    handler = http.server.SimpleHTTPRequestHandler
-    # Allow address reuse to prevent 'Address already in use' errors
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), handler) as httpd:
-        print("=" * 60)
-        print(f"  TEST FRONTEND RUNNING AT: http://localhost:{PORT}")
+    with socketserver.TCPServer(("", PORT), SPARequestHandler) as httpd:
+        print("=" * 65)
+        print(f"  REACT FRONTEND RUNNING AT: http://localhost:{PORT}")
+        print(f"  Serving: {SERVE_DIR}")
         print("  Press Ctrl+C to stop.")
-        print("=" * 60)
+        print("=" * 65)
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
