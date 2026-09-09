@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Sparkles, AlertCircle, Info, Loader2 } from 'lucide-react';
+import { Search, Sparkles, AlertCircle, Info, Loader2, FileQuestion, HelpCircle } from 'lucide-react';
 import StandardCard from './StandardCard';
 
 const SAMPLE_QUERIES = [
@@ -22,6 +22,14 @@ const SAMPLE_QUERIES = [
   {
     label: '🛡️ Structural Steel TMT',
     query: 'High strength deformed steel bars and wires for concrete reinforcement (TMT Grade Fe 500D).',
+  },
+  {
+    label: '👑 Gold Hallmarking (DoCA)',
+    query: 'Mandatory gold jewellery purity marking and 6-digit HUID hallmarking requirements.',
+  },
+  {
+    label: '🔋 Lithium Battery (CRS)',
+    query: 'Safety requirements for secondary lithium cells and batteries under compulsory registration scheme.',
   },
   {
     label: '🇮🇳 सीमेंट मानक (Hindi)',
@@ -143,8 +151,54 @@ export default function SpecSearch({ onOpenGeMClause, onSearch, searchResults, i
           </div>
 
           {searchResults.hits?.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', color: 'var(--text-secondary)' }}>
-              <p>No matching Indian Standards found for this description. Try adjusting your technical keywords.</p>
+            <div className="empty-results-card" style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '2.5rem 2rem',
+              textAlign: 'center',
+              marginTop: '1rem',
+            }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: 'rgba(245, 158, 11, 0.12)',
+                color: '#f59e0b',
+                marginBottom: '1rem'
+              }}>
+                <FileQuestion size={28} />
+              </div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                No Matching Indian Standards Found
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 1.5rem auto', fontSize: '0.95rem', lineHeight: '1.6' }}>
+                The search query did not yield any high-confidence match in the official 33,553 Bureau of Indian Standards catalog. Zero spurious standards are returned to guarantee 100% compliance with GFR Rule 144.
+              </p>
+
+              <div style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)',
+                padding: '1.25rem',
+                maxWidth: '650px',
+                margin: '0 auto',
+                textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#60a5fa', fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                  <HelpCircle size={16} />
+                  <span>Search Recommendations & Assistance:</span>
+                </div>
+                <ul style={{ listStyleType: 'disc', paddingLeft: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: '1.7' }}>
+                  <li><strong>Standard Code Format:</strong> Use verified standard numbers (e.g., <code style={{ color: '#93c5fd' }}>IS 269</code>, <code style={{ color: '#93c5fd' }}>IS 383</code>, <code style={{ color: '#93c5fd' }}>IS 458</code>, <code style={{ color: '#93c5fd' }}>IS 1786</code>). Unverified standard codes are safely rejected.</li>
+                  <li><strong>Engineering Specifications:</strong> Include material grades or test parameters (e.g., <em>"43 grade Ordinary Portland Cement"</em>, <em>"PVC insulated cables up to 1100V"</em>).</li>
+                  <li><strong>Bilingual Support:</strong> Technical tender queries in Hindi (e.g., <em>"भवन निर्माण के लिए पोर्टलैंड सीमेंट"</em>) are natively indexed.</li>
+                  <li><strong>Quick Fill:</strong> Select any of the frequently procured government items in the quick-fill chips above.</li>
+                </ul>
+              </div>
             </div>
           ) : (
             searchResults.hits.map((hit) => (

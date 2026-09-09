@@ -46,8 +46,14 @@ def main():
         cwd=ROOT_DIR / "backend",
     )
 
-    # 3. Launch Frontend (Static server on :3000)
-    print("[2/2] Starting Test Frontend on http://localhost:3000 ...")
+    # 3. Launch React Frontend (:3000)
+    frontend_dist = ROOT_DIR / "frontend" / "dist"
+    if not frontend_dist.exists():
+        print("\n[Setup] Compiled React bundle not found. Building React frontend...")
+        npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
+        subprocess.run([npm_cmd, "run", "build"], cwd=ROOT_DIR / "frontend", check=True)
+
+    print("\n[2/2] Starting Modern React Frontend on http://localhost:3000 ...")
     frontend_proc = subprocess.Popen(
         [str(PYTHON_EXE), "frontend/start_frontend.py"],
         cwd=ROOT_DIR,
@@ -56,7 +62,7 @@ def main():
     # Give backend a couple seconds to warm up
     time.sleep(2)
     print("\n" + "=" * 65)
-    print("  SYSTEM READY!")
+    print("  SYSTEM READY — GOVERNMENT PROCUREMENT PORTAL")
     print("  • Web UI:      http://localhost:3000")
     print("  • API Docs:    http://127.0.0.1:8000/docs")
     print("  Press Ctrl+C to stop both servers.")

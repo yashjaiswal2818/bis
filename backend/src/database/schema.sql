@@ -7,6 +7,7 @@
 CREATE TABLE IF NOT EXISTS standards_registry (
     is_code TEXT PRIMARY KEY,               -- e.g. "IS 269: 1989" or "IS 269: 2015"
     is_code_norm TEXT NOT NULL UNIQUE,     -- e.g. "is269:1989" (normalized for fast matching)
+    base_code TEXT NOT NULL,               -- e.g. "is269" or "is456" (without year suffix)
     title TEXT NOT NULL,                   -- e.g. "ORDINARY PORTLAND CEMENT"
     revision TEXT,                         -- e.g. "Fifth Revision"
     scope TEXT,                            -- Extracted standard scope
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS standards_registry (
 );
 
 CREATE INDEX IF NOT EXISTS idx_standards_norm ON standards_registry(is_code_norm);
+CREATE INDEX IF NOT EXISTS idx_standards_base ON standards_registry(base_code);
 CREATE INDEX IF NOT EXISTS idx_standards_status ON standards_registry(status);
 
 -- 2. Mandatory Certification & Quality Control Orders (QCO) Table

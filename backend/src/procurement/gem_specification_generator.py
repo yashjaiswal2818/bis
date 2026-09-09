@@ -46,13 +46,30 @@ class GeMSpecificationGenerator:
 
         # 2. Mandatory Certification & QCO Clause
         if qco_report and qco_report.is_mandatory:
-            qco_clause = (
-                f"2. MANDATORY REGULATORY COMPLIANCE ({qco_report.scheme_type.upper()}):\n"
-                f"   Under the {qco_report.order_name} issued by {qco_report.issuing_ministry}, "
-                f"   the offered product MUST bear the valid Standard Mark (ISI / CRS Mark). "
-                f"   Bidders MUST upload a copy of their valid BIS License (CML Number or R-Number) "
-                f"   active as on the date of bid submission. Offers without valid BIS certification shall be rejected."
-            )
+            if "Scheme-IV" in qco_report.scheme_type or "Hallmarking" in qco_report.scheme_type:
+                qco_clause = (
+                    f"2. MANDATORY STATUTORY COMPLIANCE (DOCA SCHEME-IV HALLMARKING):\n"
+                    f"   Under the {qco_report.order_name} issued by the {qco_report.issuing_ministry}, "
+                    f"   all supplied articles MUST be hallmarked with a valid 6-digit alphanumeric HUID (Hallmark Unique Identification) "
+                    f"   issued by a recognized BIS Assaying and Hallmarking Centre. Bidders MUST submit their valid BIS Registration "
+                    f"   Certificate. Non-hallmarked supplies are strictly prohibited by law under Section 29 of the BIS Act, 2016."
+                )
+            elif "Scheme-II" in qco_report.scheme_type or "CRS" in qco_report.scheme_type:
+                qco_clause = (
+                    f"2. MANDATORY STATUTORY COMPLIANCE (SCHEME-II COMPULSORY REGISTRATION):\n"
+                    f"   Under the {qco_report.order_name} issued by {qco_report.issuing_ministry}, "
+                    f"   the offered product MUST be registered under the BIS Compulsory Registration Scheme (CRS). "
+                    f"   Bidders MUST furnish their active BIS Registration Number (R-Number). Offers without a verifiable "
+                    f"   R-Number on the BIS portal shall be rejected at technical evaluation."
+                )
+            else:
+                qco_clause = (
+                    f"2. MANDATORY REGULATORY COMPLIANCE ({qco_report.scheme_type.upper()}):\n"
+                    f"   Under the {qco_report.order_name} issued by {qco_report.issuing_ministry}, "
+                    f"   the offered product MUST bear the valid Standard Mark (ISI Mark). "
+                    f"   Bidders MUST upload a copy of their valid BIS License (CML Number) "
+                    f"   active as on the date of bid submission. Offers without valid BIS certification shall be rejected."
+                )
         else:
             qco_clause = (
                 f"2. QUALITY ASSURANCE:\n"

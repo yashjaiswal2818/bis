@@ -14,7 +14,7 @@ export default function Header({ isOnline, latency }) {
               <span>Indian Standards (BIS) Recommendation Engine</span>
             </div>
             <div className="brand-subtitle">
-              Official Compliance, Technical Clause Drafting & Mandatory QCO Auditing Portal
+              Department of Consumer Affairs (DoCA) & BIS — Compliance, Clause Drafting & Mandatory QCO Portal
             </div>
           </div>
         </div>

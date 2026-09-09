@@ -56,17 +56,26 @@ class QCOMandatoryEngine:
             clause = ""
             if "Scheme-I" in scheme:
                 clause = (
-                    f"MANDATORY COMPLIANCE: The offered product must conform to {is_code} and bear the "
-                    f"valid Standard Mark (ISI Mark). The bidder must submit a copy of the valid BIS CML "
-                    f"License valid as on the date of tender submission."
+                    f"MANDATORY STATUTORY COMPLIANCE: Under Quality Control Orders issued under the BIS Act 2016, "
+                    f"the offered product must conform to {is_code} and bear the mandatory Standard Mark (ISI Mark). "
+                    f"The bidder must furnish a valid BIS License (CML Number) valid as on the bid closing date. "
+                    f"Supplies without genuine ISI marking will be summarily rejected and reported per GFR Rule 144(xi)."
                 )
-            elif "Scheme-II" in scheme:
+            elif "Scheme-II" in scheme or "CRS" in scheme:
                 clause = (
-                    f"MANDATORY COMPLIANCE: The product must be registered under BIS Compulsory Registration "
-                    f"Scheme (CRS) as per {is_code}. The bidder must submit a valid BIS Registration Number (R-Number)."
+                    f"MANDATORY STATUTORY COMPLIANCE: The product must be registered under the BIS Compulsory "
+                    f"Registration Scheme (CRS) pursuant to {is_code}. The bidder must submit an active BIS "
+                    f"Registration Number (R-Number) verifiable on the BIS portal before commercial award."
+                )
+            elif "Scheme-IV" in scheme or "Hallmarking" in scheme:
+                clause = (
+                    f"MANDATORY STATUTORY COMPLIANCE: Under the Department of Consumer Affairs (DoCA) Hallmarking Order, "
+                    f"all precious metal articles supplied under {is_code} must carry the 3 mandatory hallmark marks: "
+                    f"BIS Logo, Purity in Carats/Fineness, and a verifiable 6-digit alphanumeric HUID (Hallmark Unique Identification) "
+                    f"issued by a recognized BIS Assaying and Hallmarking Centre."
                 )
             else:
-                clause = f"The product must strictly conform to {is_code} as per {data['order_name']}."
+                clause = f"MANDATORY COMPLIANCE: The product must strictly conform to {is_code} as per {data['order_name']}."
 
             return ComplianceReport(
                 is_code=is_code,

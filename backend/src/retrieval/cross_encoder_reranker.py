@@ -43,11 +43,12 @@ def auto_clamp_rerank_pool(requested_k: int) -> int:
             else:
                 return min(requested_k, 4)
         else:
-            # CPU-Only environment (e.g. Intel Core i3)
-            clamped = min(requested_k, 3)
+            # CPU-Only environment (e.g. Intel Core i3/i5/i7)
+            # Pool=6 keeps total per-query latency safely around 2.5-3.5s (<5s rulebook target)
+            clamped = min(requested_k, 6)
             return clamped
     except Exception:
-        return min(requested_k, 3)
+        return min(requested_k, 6)
 
 
 def get_reranker() -> CrossEncoder:

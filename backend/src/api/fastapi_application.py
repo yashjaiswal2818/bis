@@ -72,6 +72,8 @@ class StandardHit(BaseModel):
     superseded_by: str | None = None
     qco_rules: list[dict[str, Any]] = Field(default_factory=list)
     allied_standards: list[dict[str, Any]] = Field(default_factory=list)
+    reaffirmation_year: int | None = None
+    amendments_count: int = 0
     rationale: str
 
 
@@ -132,6 +134,8 @@ def search_standards(req: SearchRequest):
             superseded_by=r.superseded_by,
             qco_rules=r.qco_rules,
             allied_standards=r.allied_standards,
+            reaffirmation_year=r.reaffirmation_year,
+            amendments_count=r.amendments_count,
             rationale=rat,
         ))
 

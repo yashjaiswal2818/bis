@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldAlert, CheckCircle2, AlertTriangle, FileText, Copy, Check, ExternalLink, BookOpen } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, AlertTriangle, FileText, Copy, Check, Award, Zap } from 'lucide-react';
 
 export default function StandardCard({ hit, onOpenGeMClause }) {
   const [copiedCode, setCopiedCode] = useState(false);
@@ -15,6 +15,10 @@ export default function StandardCard({ hit, onOpenGeMClause }) {
 
   const confidenceScore = Math.round((hit.rerank_score || 0) * 100);
 
+  // Determine QCO badge styling by Scheme
+  const isHallmarking = qcoDetails && (qcoDetails.scheme_type?.includes('Scheme-IV') || qcoDetails.scheme_type?.includes('Hallmark'));
+  const isCRS = qcoDetails && (qcoDetails.scheme_type?.includes('Scheme-II') || qcoDetails.scheme_type?.includes('CRS'));
+
   return (
     <article className="standard-card">
       <div className="card-header">
@@ -28,14 +32,26 @@ export default function StandardCard({ hit, onOpenGeMClause }) {
 
         <div className="header-badges">
           {hit.status === 'ACTIVE' ? (
-            <span className="badge badge-emerald" title="Current valid BIS standard">
+            <span
+              className="badge badge-emerald"
+              title={`Current active Indian Standard${hit.reaffirmation_year ? ` • Reaffirmed ${hit.reaffirmation_year}` : ''}`}
+            >
               <CheckCircle2 size={12} />
-              <span>ACTIVE</span>
+              <span>ACTIVE {hit.reaffirmation_year ? `(${hit.reaffirmation_year})` : ''}</span>
             </span>
           ) : (
             <span className="badge badge-amber" title="Superseded standard - Check updated version">
               <AlertTriangle size={12} />
               <span>SUPERSEDED {hit.superseded_by ? `(by ${hit.superseded_by})` : ''}</span>
+            </span>
+          )}
+
+          {hit.amendments_count > 0 && (
+            <span
+              className="badge badge-blue"
+              title={`${hit.amendments_count} gazetted technical amendment(s) applied`}
+            >
+              <span>{hit.amendments_count} Amend.</span>
             </span>
           )}
 
@@ -48,12 +64,26 @@ export default function StandardCard({ hit, onOpenGeMClause }) {
         </div>
       </div>
 
-      {/* Mandatory QCO Regulatory Box */}
+      {/* Mandatory QCO Regulatory Box with Scheme Identification */}
       {isMandatoryQCO && qcoDetails && (
-        <div className="qco-box">
+        <div className={isHallmarking ? 'qco-box-gold' : isCRS ? 'qco-box-blue' : 'qco-box'}>
           <div className="qco-box-header">
-            <ShieldAlert size={15} />
-            <span>MANDATORY COMPLIANCE BY LAW — {qcoDetails.scheme_type || 'QCO MANDATE'}</span>
+            {isHallmarking ? (
+              <>
+                <Award size={16} />
+                <span>DOCA MANDATORY HALLMARKING (SCHEME-IV) — 6-DIGIT HUID REQUIRED</span>
+              </>
+            ) : isCRS ? (
+              <>
+                <Zap size={16} />
+                <span>MANDATORY COMPULSORY REGISTRATION (SCHEME-II CRS) — R-NUMBER REQUIRED</span>
+              </>
+            ) : (
+              <>
+                <ShieldAlert size={16} />
+                <span>MANDATORY COMPLIANCE BY LAW — {qcoDetails.scheme_type || 'SCHEME-I (ISI MARK)'}</span>
+              </>
+            )}
           </div>
           <div className="qco-box-content">
             {qcoDetails.compliance_warning ||
@@ -76,20 +106,39 @@ export default function StandardCard({ hit, onOpenGeMClause }) {
         <span>{hit.rationale}</span>
       </div>
 
-      {/* Allied Standards & Actions Bar */}
+      {/* Allied Standards & Actions Bar with Taxonomy Badges */}
       <div className="allied-bar">
         <div className="allied-group">
-          <span className="allied-title">Allied Quality Codes:</span>
+          <span className="allied-title">Allied Standards Taxonomy:</span>
           {hit.allied_standards && hit.allied_standards.length > 0 ? (
-            hit.allied_standards.slice(0, 4).map((allied, idx) => (
-              <span
-                key={idx}
-                className="allied-tag"
-                title={`${allied.label || 'Allied Standard'}: ${allied.title} (${allied.relation_type || 'Related'})`}
-              >
-                {allied.target_is_code}
-              </span>
-            ))
+            hit.allied_standards.slice(0, 5).map((allied, idx) => {
+              const rel = allied.relation_type;
+              let tagClass = 'allied-tag';
+              let prefix = '';
+              if (rel === 'NORM_TEST') {
+                tagClass += ' allied-tag-test';
+                prefix = '🧪 ';
+              } else if (rel === 'INSTALLATION') {
+                tagClass += ' allied-tag-install';
+                prefix = '🛠️ ';
+              } else if (rel === 'SAFETY') {
+                tagClass += ' allied-tag-safety';
+                prefix = '🛡️ ';
+              } else if (rel === 'TERMINOLOGY') {
+                tagClass += ' allied-tag-terms';
+                prefix = '📖 ';
+              }
+
+              return (
+                <span
+                  key={idx}
+                  className={tagClass}
+                  title={`${allied.label || 'Allied Standard'}: ${allied.title} (${allied.relation_type || 'Related'})`}
+                >
+                  {prefix}{allied.target_is_code}
+                </span>
+              );
+            })
           ) : (
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               No linked allied testing codes

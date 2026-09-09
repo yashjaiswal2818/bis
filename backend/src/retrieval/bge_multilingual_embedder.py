@@ -27,7 +27,6 @@ def get_embedder():
         import torch
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        # Force offline cache if already downloaded
         _MODEL_INSTANCE = SentenceTransformer(MODEL_NAME, device=device)
     return _MODEL_INSTANCE
 

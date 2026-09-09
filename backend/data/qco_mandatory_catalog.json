@@ -148,5 +148,145 @@
     "order_name": "Protective Helmets for Two Wheeler Riders (Quality Control) Order, 2020",
     "effective_date": "2021-06-01",
     "compliance_warning": "MANDATORY: Two-wheeler safety helmets must strictly bear ISI standard mark under MoRTH notification. Procurement of non-ISI helmets by police/defense/security is illegal."
+  },
+  {
+    "is_code": "IS 269: 2015",
+    "product_category": "Ordinary Portland Cement (33, 43, 53 Grade)",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Cement (Quality Control) Order, 2023",
+    "effective_date": "2023-11-28",
+    "compliance_warning": "CRITICAL: Under DPIIT Cement QCO 2023, manufacturing, stocking, or procuring cement without BIS License/ISI Mark is a punishable offense under BIS Act 2016."
+  },
+  {
+    "is_code": "IS 15683: 2018",
+    "product_category": "Portable Fire Extinguishers",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
+    "order_name": "Fire Fighting Equipment (Quality Control) Order, 2023",
+    "effective_date": "2023-10-15",
+    "compliance_warning": "MANDATORY: Portable fire extinguishers must carry the ISI certification mark under DPIIT QCO. Non-compliant units cannot be procured for public buildings or tenders."
+  },
+  {
+    "is_code": "IS 4984: 2016",
+    "product_category": "High Density Polyethylene (HDPE) Pipes for Water Supply",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Chemicals and Petrochemicals",
+    "order_name": "Polyethylene Material for Moulding and Extrusion QCO, 2022",
+    "effective_date": "2022-09-01",
+    "compliance_warning": "MANDATORY: HDPE potable water pipes require raw material and finished pipe BIS licensing under mandatory QCO."
+  },
+  {
+    "is_code": "IS 1417: 2016",
+    "product_category": "Gold Jewellery and Gold Artefacts (Fineness & Marking)",
+    "scheme_type": "Scheme-IV (Mandatory Hallmarking with HUID)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Consumer Affairs (DoCA)",
+    "order_name": "Hallmarking of Gold Jewellery and Gold Artefacts Order, 2020",
+    "effective_date": "2021-06-23",
+    "compliance_warning": "CRITICAL: Under the Department of Consumer Affairs (DoCA) Hallmarking Order, sale or procurement of gold jewellery without 6-digit alphanumeric HUID (Hallmark Unique Identification) is an offense under Section 29 of the BIS Act, 2016. Tenders must mandate certified BIS Hallmarked supply."
+  },
+  {
+    "is_code": "IS 2112: 2014",
+    "product_category": "Silver Jewellery and Silver Artefacts",
+    "scheme_type": "Scheme-IV (Hallmarking Scheme)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Consumer Affairs (DoCA)",
+    "order_name": "Silver Artefacts (Quality Control) Order",
+    "effective_date": "2022-04-01",
+    "compliance_warning": "MANDATORY: Silver items must bear official BIS Hallmark indicating fineness (925/999) from an authorized Assaying and Hallmarking Centre."
+  },
+  {
+    "is_code": "IS 15820: 2009",
+    "product_category": "Assaying and Hallmarking Centres Competence",
+    "scheme_type": "Scheme-IV (Hallmarking Centre Recognition)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Consumer Affairs (DoCA)",
+    "order_name": "Assaying and Hallmarking Centres Recognition Guidelines",
+    "effective_date": "2020-01-15",
+    "compliance_warning": "MANDATORY: Testing protocols for gold/silver purity must strictly follow IS 15820 under DoCA monitoring."
+  },
+  {
+    "is_code": "IS 16046 (Part 1): 2018",
+    "product_category": "Secondary Nickel Cells and Batteries",
+    "scheme_type": "Scheme-II (Compulsory Registration Scheme - CRS)",
+    "is_mandatory": true,
+    "issuing_ministry": "MeitY / Department of Consumer Affairs (DoCA)",
+    "order_name": "Electronics and IT Goods (Compulsory Registration) Order",
+    "effective_date": "2019-01-01",
+    "compliance_warning": "MANDATORY: Nickel battery systems require valid BIS Registration Number (R-Number) under MeitY/DoCA CRS scheme."
+  },
+  {
+    "is_code": "IS 16102 (Part 1): 2012",
+    "product_category": "Self-Ballasted LED Lamps (Safety)",
+    "scheme_type": "Scheme-II (Compulsory Registration Scheme - CRS)",
+    "is_mandatory": true,
+    "issuing_ministry": "MeitY / Department of Consumer Affairs (DoCA)",
+    "order_name": "Electronics and IT Goods (Compulsory Registration) Order",
+    "effective_date": "2015-05-07",
+    "compliance_warning": "MANDATORY: Self-ballasted LED lamps must carry valid BIS CRS Registration (R-Number) under government energy procurement mandates."
+  },
+  {
+    "is_code": "IS 16102 (Part 2): 2012",
+    "product_category": "Self-Ballasted LED Lamps (Performance)",
+    "scheme_type": "Scheme-II (Compulsory Registration Scheme - CRS)",
+    "is_mandatory": true,
+    "issuing_ministry": "MeitY / Department of Consumer Affairs (DoCA)",
+    "order_name": "Electronics and IT Goods (Compulsory Registration) Order",
+    "effective_date": "2015-05-07",
+    "compliance_warning": "MANDATORY: LED lamp efficiency and lumen performance must conform to IS 16102 (Part 2) under public lighting tenders."
+  },
+  {
+    "is_code": "IS 16221 (Part 2): 2015",
+    "product_category": "Solar Photovoltaic Power Inverters",
+    "scheme_type": "Scheme-II (Compulsory Registration Scheme - CRS)",
+    "is_mandatory": true,
+    "issuing_ministry": "Ministry of New and Renewable Energy (MNRE) / DoCA",
+    "order_name": "Solar Photovoltaics, Systems, Devices and Components Goods Order",
+    "effective_date": "2018-04-16",
+    "compliance_warning": "MANDATORY: Solar grid-tied inverters require valid BIS CRS certification. Tenders must reject uncertified solar inverter brands."
+  },
+  {
+    "is_code": "IS 10500: 2012",
+    "product_category": "Drinking Water (Piped / Potable Supply)",
+    "scheme_type": "Scheme-I (Mandatory Conformance under Jal Jeevan Mission & DoCA)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Consumer Affairs (DoCA) & Jal Shakti",
+    "order_name": "Uniform Drinking Water Quality Standards Order",
+    "effective_date": "2019-11-20",
+    "compliance_warning": "CRITICAL: Potable drinking water supply projects, municipal water distribution, and water purification units must strictly conform to IS 10500: 2012 parameters without relaxation."
+  },
+  {
+    "is_code": "IS 14543: 2016",
+    "product_category": "Packaged Drinking Water",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Consumer Affairs (DoCA) & FSSAI",
+    "order_name": "Food Safety & Standards / Packaged Water Mandatory Certification Order",
+    "effective_date": "2001-03-29",
+    "compliance_warning": "CRITICAL: Packaged drinking water cannot be manufactured or procured without mandatory BIS Standard Mark (ISI Mark) and FSSAI license under Supreme Court and DoCA notifications."
+  },
+  {
+    "is_code": "IS 2925: 1984",
+    "product_category": "Industrial Safety Helmets",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Consumer Affairs (DoCA) / DPIIT",
+    "order_name": "Personal Protective Equipment (Quality Control) Order, 2023",
+    "effective_date": "2023-12-06",
+    "compliance_warning": "MANDATORY: Industrial protective helmets must bear the ISI Mark under Scheme-I for all government infrastructure and construction tenders."
+  },
+  {
+    "is_code": "IS 3196 (Part 1): 2013",
+    "product_category": "LPG Gas Cylinders",
+    "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+    "is_mandatory": true,
+    "issuing_ministry": "Department of Consumer Affairs (DoCA) / MoPNG / PESO",
+    "order_name": "Gas Cylinders Rules & Mandatory Certification Order",
+    "effective_date": "2004-09-21",
+    "compliance_warning": "CRITICAL: LPG cylinders are strictly mandatory under Scheme-I. Bidders must produce valid BIS CML license and PESO manufacture approval."
   }
 ]

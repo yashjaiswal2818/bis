@@ -1,0 +1,133 @@
+[
+  {
+    "id": "NAT-01",
+    "query": "Procurement of gold jewellery and artefacts requiring mandatory purity marking and 6-digit alphanumeric HUID hallmarking under DoCA Scheme-IV.",
+    "expected_standards": [
+      "IS 1417: 2016",
+      "IS 1417",
+      "IS 1417: 1999"
+    ]
+  },
+  {
+    "id": "NAT-02",
+    "query": "Safety requirements and testing for secondary lithium cells and batteries for use in portable electronics under MeitY Compulsory Registration Scheme (CRS).",
+    "expected_standards": [
+      "IS 16046 (Part 2): 2018",
+      "IS 16046: 2018",
+      "IS 16046"
+    ]
+  },
+  {
+    "id": "NAT-03",
+    "query": "Tender specification for high strength deformed steel bars and wires (TMT rebar Fe 500D) for reinforced concrete structural construction.",
+    "expected_standards": [
+      "IS 1786: 2008",
+      "IS 1786",
+      "IS 1786: 1985"
+    ]
+  },
+  {
+    "id": "NAT-04",
+    "query": "Quality requirements, permissible limits for contaminants, and test criteria for potable drinking water supplied through municipal piped lines.",
+    "expected_standards": [
+      "IS 10500: 2012",
+      "IS 10500",
+      "IS 10500: 1991"
+    ]
+  },
+  {
+    "id": "NAT-05",
+    "query": "Mandatory BIS ISI mark certification requirements for packaged drinking water other than natural mineral water sold in plastic bottles.",
+    "expected_standards": [
+      "IS 14543: 2016",
+      "IS 14543"
+    ]
+  },
+  {
+    "id": "NAT-06",
+    "query": "Performance and construction specification for portable fire extinguishers including water, foam, powder, and carbon dioxide types.",
+    "expected_standards": [
+      "IS 15683: 2018",
+      "IS 15683",
+      "IS 15683: 2006"
+    ]
+  },
+  {
+    "id": "NAT-07",
+    "query": "Industrial safety helmets providing head protection against impact and penetration for workers on construction and engineering sites.",
+    "expected_standards": [
+      "IS 2925: 1984",
+      "IS 2925"
+    ]
+  },
+  {
+    "id": "NAT-08",
+    "query": "General structural code of practice for design and construction of plain and reinforced concrete structures in civil works.",
+    "expected_standards": [
+      "IS 456: 2000",
+      "IS 456"
+    ]
+  },
+  {
+    "id": "NAT-09",
+    "query": "Criteria for earthquake resistant design of structures subjected to seismic ground motion in zone IV and zone V.",
+    "expected_standards": [
+      "IS 1893 (Part 1): 2016",
+      "IS 1893: 2002",
+      "IS 1893"
+    ]
+  },
+  {
+    "id": "NAT-10",
+    "query": "Specification for welded low carbon steel gas cylinders intended for storage and conveyance of low pressure liquefiable petroleum gases (LPG).",
+    "expected_standards": [
+      "IS 3196 (Part 1): 2013",
+      "IS 3196: 2013",
+      "IS 3196 (Part 1): 2006",
+      "IS 3196"
+    ]
+  },
+  {
+    "id": "NAT-11",
+    "query": "Air circulator type electric fans and regulators for industrial and commercial ventilation.",
+    "expected_standards": [
+      "IS 2997: 1964",
+      "IS 2997"
+    ]
+  },
+  {
+    "id": "NAT-12",
+    "query": "Covered electrodes for manual metal arc welding of carbon and carbon manganese steel.",
+    "expected_standards": [
+      "IS 814: 2004",
+      "IS 814: 1991",
+      "IS 814"
+    ]
+  },
+  {
+    "id": "NAT-13",
+    "query": "Safety requirements for self-ballasted LED lamps for general lighting services operating on supply voltages exceeding 50 V.",
+    "expected_standards": [
+      "IS 16102 (Part 1): 2012",
+      "IS 16102: 2012",
+      "IS 16102"
+    ]
+  },
+  {
+    "id": "NAT-14",
+    "query": "Jute bags for packing 50 kg foodgrains with specific dimensions and breaking strength.",
+    "expected_standards": [
+      "IS 12650: 2018",
+      "IS 12650: 2003",
+      "IS 12650"
+    ]
+  },
+  {
+    "id": "NAT-15",
+    "query": "Sterile hypodermic syringes for single use made of plastic materials for medical applications.",
+    "expected_standards": [
+      "IS 10258: 2002",
+      "IS 10258"
+    ]
+  }
+]

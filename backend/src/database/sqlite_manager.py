@@ -39,19 +39,39 @@ def normalize_is_code(code: str) -> str:
     return re.sub(r"\s+", "", code).lower()
 
 
+def extract_base_code(code: str) -> str:
+    """Extracts base standard identifier without year or revision, lowercased and stripped of spaces.
+    e.g. 'IS 456: 2000' -> 'is456'
+         'IS 1489 (Part 1): 1991' -> 'is1489(part1)'
+         'IS 10500' -> 'is10500'
+    """
+    cleaned = re.sub(r":\s*\d{4}.*$", "", str(code))
+    return re.sub(r"\s+", "", cleaned).lower()
+
+
+KNOWN_TEST_CODES = {"is4031", "is2386", "is516", "is1608", "is3025", "is12235", "is1966", "is3495", "is1727", "is1367"}
+KNOWN_INSTALLATION_CODES = {"is7634", "is456", "is13920", "is1893", "is4021", "is2212", "is2250", "is1478", "is1742"}
+KNOWN_SAFETY_CODES = {"is14489", "is1642", "is2925", "is15683", "is2171", "is3521", "is3844"}
+KNOWN_TERMINOLOGY_CODES = {"is4845", "is2248", "is195", "is282", "is1800"}
+
+
 def classify_relation(source_code: str, target_code: str, target_title: str) -> tuple[str, str]:
-    """Classifies a cross-reference relationship based on title and keywords."""
+    """Classifies a cross-reference relationship into the 6-way BIS taxonomy based on code and title."""
     title_lower = target_title.lower() if target_title else ""
-    if any(k in title_lower for k in ["method of test", "testing", "sampling", "determination", "analysis", "test"]):
+    code_base = extract_base_code(target_code)
+
+    if code_base in KNOWN_TEST_CODES or any(k in title_lower for k in ["method of test", "testing", "sampling", "determination", "analysis", "test"]):
         return "NORM_TEST", "Normative Test & Sampling Method"
-    elif any(k in title_lower for k in ["code of practice", "laying", "installation", "construction", "workmanship", "application"]):
+    elif code_base in KNOWN_INSTALLATION_CODES or any(k in title_lower for k in ["code of practice", "laying", "installation", "construction", "workmanship", "application", "detailing"]):
         return "INSTALLATION", "Installation & Workmanship Code"
-    elif any(k in title_lower for k in ["safety", "fire", "protection", "health", "hazard", "prevention"]):
+    elif code_base in KNOWN_SAFETY_CODES or any(k in title_lower for k in ["safety", "fire", "protection", "health", "hazard", "prevention", "helmet", "extinguisher"]):
         return "SAFETY", "Safety & Environmental Standard"
-    elif any(k in title_lower for k in ["glossary", "terminology", "definitions", "symbols"]):
+    elif code_base in KNOWN_TERMINOLOGY_CODES or any(k in title_lower for k in ["glossary", "terminology", "definitions", "symbols"]):
         return "TERMINOLOGY", "Terminology & Definitions Standard"
-    else:
+    elif any(k in title_lower for k in ["admixture", "aggregate", "lime", "fly ash", "slag", "water", "bar", "steel", "cement"]):
         return "RAW_MATERIAL", "Allied Material / Component Specification"
+    else:
+        return "RELATED_PRODUCT", "Allied Co-Dependent Product Standard"
 
 
 def seed_database_from_files(
@@ -74,16 +94,17 @@ def seed_database_from_files(
                 if not is_code:
                     continue
                 is_code_norm = normalize_is_code(is_code)
+                base_code = extract_base_code(is_code)
                 title = r.get("title", "").strip()
                 revision = r.get("revision")
                 scope = r.get("scope", "")
                 full_text = r.get("full_text", "")
                 
                 # Check lifecycle metadata
-                status = "ACTIVE"
-                superseded_by = None
-                reaffirm_year = None
-                amendments = 0
+                status = r.get("status", "ACTIVE")
+                superseded_by = r.get("superseded_by")
+                reaffirm_year = r.get("reaffirmation_year")
+                amendments = r.get("amendments_count", 0)
 
                 # Sample known revisions for building materials
                 if "1989" in is_code and "269" in is_code:
@@ -95,11 +116,12 @@ def seed_database_from_files(
                 standards_rows.append((
                     is_code,
                     is_code_norm,
+                    base_code,
                     title,
                     revision,
                     scope,
                     full_text,
-                    "Civil Engineering (CED)",
+                    r.get("division", "Civil Engineering (CED)"),
                     status,
                     superseded_by,
                     reaffirm_year,
@@ -109,8 +131,8 @@ def seed_database_from_files(
             conn.executemany(
                 """
                 INSERT OR REPLACE INTO standards_registry 
-                (is_code, is_code_norm, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (is_code, is_code_norm, base_code, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 standards_rows,
             )
@@ -124,9 +146,11 @@ def seed_database_from_files(
             for q in qco_records:
                 code = q["is_code"]
                 norm = normalize_is_code(code)
+                base = extract_base_code(code)
                 stub_standards.append((
                     code,
                     norm,
+                    base,
                     q["product_category"],
                     "Latest Published Version",
                     f"Specification covering {q['product_category']}",
@@ -152,8 +176,8 @@ def seed_database_from_files(
             conn.executemany(
                 """
                 INSERT OR IGNORE INTO standards_registry
-                (is_code, is_code_norm, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (is_code, is_code_norm, base_code, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 stub_standards,
             )
@@ -183,6 +207,7 @@ def seed_database_from_files(
                     source_stubs.append((
                         source_code,
                         normalize_is_code(source_code),
+                        extract_base_code(source_code),
                         "Indian Standard Specification",
                         "Latest Edition",
                         "",
@@ -197,8 +222,8 @@ def seed_database_from_files(
                 conn.executemany(
                     """
                     INSERT OR IGNORE INTO standards_registry
-                    (is_code, is_code_norm, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (is_code, is_code_norm, base_code, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     source_stubs,
                 )
@@ -233,31 +258,53 @@ def seed_database_from_files(
 # --- Query Helpers ---
 
 def get_standard_details(is_code: str, db_path: Path = DB_PATH) -> dict[str, Any] | None:
-    """Retrieves full standard record by canonical IS code."""
+    """Retrieves full standard record by canonical IS code, normalized code, or base code.
+    If multiple versions match base_code (e.g. IS 269:1989 and IS 269:2015), prefers ACTIVE over SUPERSEDED.
+    """
+    code_norm = normalize_is_code(is_code)
+    base_code = extract_base_code(is_code)
     with get_connection(db_path) as conn:
         row = conn.execute(
             "SELECT * FROM standards_registry WHERE is_code = ? OR is_code_norm = ?",
-            (is_code, normalize_is_code(is_code)),
+            (is_code, code_norm),
         ).fetchone()
+
+        if not row:
+            row = conn.execute(
+                """
+                SELECT * FROM standards_registry 
+                WHERE base_code = ? 
+                ORDER BY CASE WHEN status = 'ACTIVE' THEN 0 ELSE 1 END, is_code DESC
+                LIMIT 1
+                """,
+                (base_code,),
+            ).fetchone()
+
         if not row:
             return None
         res = dict(row)
-        # Fetch QCO rules
+        # Fetch QCO rules (match exact code or base standard)
+        base = res.get("base_code") or extract_base_code(res["is_code"])
         qco_rows = conn.execute(
-            "SELECT * FROM qco_compliance_rules WHERE is_code = ?",
-            (res["is_code"],),
+            """
+            SELECT DISTINCT q.* FROM qco_compliance_rules q
+            LEFT JOIN standards_registry s ON q.is_code = s.is_code
+            WHERE q.is_code = ? OR s.base_code = ?
+            """,
+            (res["is_code"], base),
         ).fetchall()
         res["qco_rules"] = [dict(q) for q in qco_rows]
 
-        # Fetch Allied Standards
+        # Fetch Allied Standards (match exact code or base standard)
         allied_rows = conn.execute(
             """
-            SELECT a.target_is_code, a.relation_type, a.relation_label, a.is_normative, s.title
+            SELECT DISTINCT a.target_is_code, a.relation_type, a.relation_label, a.is_normative, s.title
             FROM allied_standards_edges a
+            LEFT JOIN standards_registry src ON a.source_is_code = src.is_code
             LEFT JOIN standards_registry s ON a.target_is_code = s.is_code
-            WHERE a.source_is_code = ?
+            WHERE a.source_is_code = ? OR src.base_code = ?
             """,
-            (res["is_code"],),
+            (res["is_code"], base),
         ).fetchall()
         res["allied_standards"] = [dict(a) for a in allied_rows]
         return res
