@@ -31,6 +31,15 @@ export async function searchStandards(query, topK = 5, useCloudLLM = false) {
   return await res.json();
 }
 
+export async function getStandardDetails(isCode) {
+  const res = await fetch(`${API_BASE}/standards/${encodeURIComponent(isCode)}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to fetch details for ${isCode}`);
+  }
+  return await res.json();
+}
+
 export async function generateGeMClause(isCode) {
   const res = await fetch(`${API_BASE}/gem-clause`, {
     method: 'POST',

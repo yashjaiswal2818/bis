@@ -48,8 +48,19 @@ def main():
 
     # 3. Launch React Frontend (:3000)
     frontend_dist = ROOT_DIR / "frontend" / "dist"
-    if not frontend_dist.exists():
-        print("\n[Setup] Compiled React bundle not found. Building React frontend...")
+    dist_index = frontend_dist / "index.html"
+    src_dir = ROOT_DIR / "frontend" / "src"
+
+    needs_build = not dist_index.exists()
+    if not needs_build and src_dir.exists():
+        dist_mtime = dist_index.stat().st_mtime
+        for f in src_dir.rglob("*"):
+            if f.is_file() and f.stat().st_mtime > dist_mtime:
+                needs_build = True
+                break
+
+    if needs_build:
+        print("\n[Setup] Source files modified. Compiling modern React frontend...")
         npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
         subprocess.run([npm_cmd, "run", "build"], cwd=ROOT_DIR / "frontend", check=True)
 

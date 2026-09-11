@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Download, CheckCircle, Terminal, Award, Activity } from 'lucide-react';
+import { Play, Download, CheckCircle, Terminal, Award, Activity, Loader2 } from 'lucide-react';
 import { judgeSearch } from '../api/client';
 
 const BENCHMARK_QUERIES = [
@@ -23,7 +23,7 @@ export default function BenchmarkSandbox() {
 
   const runBenchmark = async () => {
     setIsRunning(true);
-    setLogs('> Initializing offline benchmark evaluation against public test set...\n');
+    setLogs('> Initializing offline benchmark evaluation against public benchmark queries...\n');
     setMetrics(null);
     setTeamResults(null);
 
@@ -98,73 +98,85 @@ export default function BenchmarkSandbox() {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'team_results.json';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   };
 
   return (
-    <div className="benchmark-sandbox-container">
+    <div className="benchmark-container">
+      {/* Overview Banner */}
       <div className="officer-banner">
-        <Award size={20} className="officer-banner-icon" />
+        <Activity size={20} className="officer-banner-icon" />
         <div className="officer-banner-text">
-          <h3>Recommendation Accuracy & Latency Benchmarks</h3>
+          <h3>Information Retrieval & Evaluation Benchmark</h3>
           <p>
-            Verify the offline retrieval accuracy, reciprocal rank scores, and CPU latency ladder across the standardized test dataset. This guarantees retrieval precision before deploying tender specifications.
+            Evaluates the offline hybrid retrieval pipeline (BM25 lexical search + BGE-M3 1024-d dense vector index + Cross-Encoder reranking) against curated government procurement benchmark queries.
           </p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      {/* Action Controls */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <button
-          className="btn-search"
-          style={{ height: '42px', padding: '0 1.25rem' }}
+          className="btn-primary-search"
           onClick={runBenchmark}
           disabled={isRunning}
         >
-          <Play size={15} />
-          <span>{isRunning ? 'Running Benchmark...' : 'Run Benchmark (public_test_set.json)'}</span>
+          {isRunning ? (
+            <>
+              <Loader2 size={16} className="spin-icon" />
+              <span>Running Benchmark ({BENCHMARK_QUERIES.length} Queries)...</span>
+            </>
+          ) : (
+            <>
+              <Play size={16} />
+              <span>Execute Evaluation Suite</span>
+            </>
+          )}
         </button>
 
         {teamResults && (
-          <button className="btn-action-primary" onClick={handleDownloadResults}>
+          <button className="btn-action-outline" onClick={handleDownloadResults}>
             <Download size={15} />
             <span>Download team_results.json</span>
           </button>
         )}
       </div>
 
-      {/* Metrics Grid */}
+      {/* Metrics Dashboard */}
       {metrics && (
         <div className="benchmark-metrics-grid">
           <div className="metric-card">
-            <span className="metric-title">Hit Rate @ 3</span>
-            <span className="metric-value" style={{ color: '#34d399' }}>{metrics.hitRate}%</span>
-            <span className="metric-target">Target: &gt; 80% (Accurate Match)</span>
+            <div className="metric-label">Hit Rate @ 3</div>
+            <div className="metric-value" style={{ color: '#059669' }}>
+              {metrics.hitRate}%
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Target: &gt;80.0%</span>
           </div>
 
           <div className="metric-card">
-            <span className="metric-title">Mean Reciprocal Rank (MRR@5)</span>
-            <span className="metric-value" style={{ color: '#60a5fa' }}>{metrics.mrr}</span>
-            <span className="metric-target">Target: &gt; 0.70 (Top Rank Precision)</span>
+            <div className="metric-label">MRR @ 5</div>
+            <div className="metric-value" style={{ color: 'var(--primary-blue)' }}>
+              {metrics.mrr}
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Mean Reciprocal Rank</span>
           </div>
 
           <div className="metric-card">
-            <span className="metric-title">Average Latency per Query</span>
-            <span className="metric-value" style={{ color: '#fbbf24' }}>{metrics.avgLatency}s</span>
-            <span className="metric-target">Target: &lt; 2.0s (Hardware Adaptive)</span>
+            <div className="metric-label">Avg Search Latency</div>
+            <div className="metric-value" style={{ color: 'var(--primary-navy)' }}>
+              {metrics.avgLatency}s
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Hardware-Adaptive Target: &lt;5s</span>
           </div>
         </div>
       )}
 
-      {/* Terminal Logs */}
-      {logs && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            <Terminal size={14} />
-            <span>Evaluation Execution Log:</span>
-          </div>
-          <pre className="terminal-log">{logs}</pre>
-        </div>
-      )}
+      {/* Terminal Log Console */}
+      <div className="terminal-box" aria-label="Evaluation Console Output">
+        {logs || '> Standby. Click "Execute Evaluation Suite" to run public test queries...'}
+      </div>
     </div>
   );
 }

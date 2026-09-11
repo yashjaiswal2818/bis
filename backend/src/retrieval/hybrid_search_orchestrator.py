@@ -6,6 +6,9 @@ applies the hard IS-code whitelist guard, and enriches results with SQLite QCO a
 """
 from __future__ import annotations
 
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import json
 import re
 import sys
@@ -23,9 +26,14 @@ from src.database.sqlite_manager import (
     get_standard_details,
     normalize_is_code,
 )
-from src.retrieval.bge_multilingual_embedder import encode_query_cached
+from src.retrieval.bge_multilingual_embedder import encode_query_cached, get_embedder
 from src.retrieval.bm25_lexical_indexer import BM25LexicalIndex
-from src.retrieval.cross_encoder_reranker import auto_clamp_rerank_pool, rerank_pairs
+from src.retrieval.cross_encoder_reranker import auto_clamp_rerank_pool, get_reranker, rerank_pairs
+
+# Harmonize PyTorch OpenMP runtime before C++ FAISS library load on Windows
+get_embedder()
+get_reranker()
+
 from src.retrieval.faiss_vector_indexer import FAISSDenseIndex
 from src.retrieval.query_preprocessor import AdaptiveQueryPreprocessor, ProcessedQuery
 
@@ -48,6 +56,10 @@ class RecommendedStandard:
     allied_standards: list[dict[str, Any]] = field(default_factory=list)
     reaffirmation_year: int | None = None
     amendments_count: int = 0
+    is_government_schedule_match: bool = False
+    schedule_item_title: str | None = None
+    schedule_category: str | None = None
+    matched_grade: str | None = None
 
 
 def get_confidence_band(score: float) -> str:
@@ -177,13 +189,14 @@ class HybridSearchOrchestrator:
         final_k: int = 5,
         rrf_c: int = 60,
     ):
-        self.dense_index = FAISSDenseIndex.load(index_dir)
-        self.bm25_index = BM25LexicalIndex.load(index_dir / "bm25_index.pkl")
         self.dense_k = dense_k
         self.bm25_k = bm25_k
         self.rerank_k = auto_clamp_rerank_pool(rerank_k)
         self.final_k = final_k
         self.rrf_c = rrf_c
+
+        self.dense_index = FAISSDenseIndex.load(index_dir)
+        self.bm25_index = BM25LexicalIndex.load(index_dir / "bm25_index.pkl")
 
         # Load anti-hallucination whitelist
         self.whitelist: set[str] = set()
@@ -395,6 +408,10 @@ class HybridSearchOrchestrator:
         rerank_query = clean_q if len(clean_q) >= 6 else query
         rerank_scores = rerank_pairs(rerank_query, passages)
 
+        gov_item = processed.matched_government_item
+        gov_target_code = gov_item.get("is_code", "") if gov_item else ""
+        gov_target_base = gov_item.get("base_code", "") if gov_item else ""
+
         # Pair candidates with their rerank scores and apply precision alignment
         reranked = []
         for (code, rrf_score, _, alignment), r_score in zip(rerank_pool, rerank_scores):
@@ -402,7 +419,15 @@ class HybridSearchOrchestrator:
             status_boost = 0.03 if details.get("status") == "ACTIVE" else 0.0
             direct_boost = 0.35 if code in direct_matches else 0.0
 
-            final_r_score = r_score + alignment + status_boost + direct_boost
+            # Contextual government schedule boost (only if cross-encoder shows non-trivial relevance)
+            gov_boost = 0.0
+            if gov_item and r_score >= 0.30:
+                if (code == gov_target_code or code == gov_target_base or 
+                    normalize_is_code(code) == normalize_is_code(gov_target_code) or 
+                    normalize_is_code(code) == normalize_is_code(gov_target_base)):
+                    gov_boost = 0.08
+
+            final_r_score = r_score + alignment + status_boost + direct_boost + gov_boost
             final_r_score = max(0.01, min(0.999, final_r_score))
             reranked.append((code, rrf_score, final_r_score))
 
@@ -423,9 +448,21 @@ class HybridSearchOrchestrator:
         final_results = []
         for rank, (code, rrf_score, r_score) in enumerate(reranked[:top_k], start=1):
             details = get_standard_details(code) or {}
-            confidence = get_confidence_band(r_score)
 
-            title_val = details.get("title") or standard_metadata.get(code, {}).get("title")
+            # Check if this candidate matches the detected government item
+            is_gov_match = False
+            if gov_item:
+                target_code = gov_target_code
+                target_base = gov_target_base
+                if (code == target_code or code == target_base or 
+                    normalize_is_code(code) == normalize_is_code(target_code) or 
+                    normalize_is_code(code) == normalize_is_code(target_base)):
+                    is_gov_match = True
+
+            confidence = get_confidence_band(r_score)
+            effective_rerank = r_score
+
+            title_val = details.get("title") or (standard_metadata.get(code) or {}).get("title")
             title = str(title_val).strip() if title_val is not None else ""
 
             scope_val = details.get("scope")
@@ -434,12 +471,21 @@ class HybridSearchOrchestrator:
             status_val = details.get("status")
             status = str(status_val).strip() if status_val is not None else "ACTIVE"
 
+            # Safely extract government schedule metadata when a match exists
+            schedule_item_title = None
+            schedule_category = None
+            matched_grade = None
+            if is_gov_match and gov_item is not None:
+                schedule_item_title = gov_item.get("canonical_title")
+                schedule_category = gov_item.get("schedule_category")
+                matched_grade = gov_item.get("required_grade")
+
             final_results.append(RecommendedStandard(
                 rank=rank,
                 is_code=code,
                 title=title,
                 scope=scope,
-                rerank_score=r_score,
+                rerank_score=effective_rerank,
                 rrf_score=rrf_score,
                 confidence=confidence,
                 status=status,
@@ -448,11 +494,22 @@ class HybridSearchOrchestrator:
                 allied_standards=details.get("allied_standards", []),
                 reaffirmation_year=details.get("reaffirmation_year"),
                 amendments_count=details.get("amendments_count", 0),
+                is_government_schedule_match=is_gov_match,
+                schedule_item_title=schedule_item_title,
+                schedule_category=schedule_category,
+                matched_grade=matched_grade,
             ))
+
+        # Sort strictly by precision rerank score (no artificial pinning that overrides better matches)
+        final_results.sort(key=lambda x: -x.rerank_score)
+        for idx, r in enumerate(final_results, start=1):
+            r.rank = idx
 
         print(f">> [FINAL FUSED & RERANKED SELECTION] Top {len(final_results)}:")
         for r in final_results:
-            print(f"   #{r.rank} {r.is_code:<24} | Rerank: {r.rerank_score:.4f} | RRF: {r.rrf_score:.4f} | Conf: {r.confidence:<6} | {r.title[:40]}")
+            cat = (r.schedule_category[:20] if r.schedule_category else "Government Schedule")
+            gov_tag = f" [🏛️ {cat}...]" if r.is_government_schedule_match else ""
+            print(f"   #{r.rank} {r.is_code:<24} | Rerank: {r.rerank_score:.4f} | RRF: {r.rrf_score:.4f} | Conf: {r.confidence:<6}{gov_tag} | {r.title[:40]}")
         print("=" * 80 + "\n")
 
         return final_results

@@ -13,9 +13,11 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from src.compliance.tender_compliance_auditor import TenderComplianceAuditor
 from src.database.sqlite_manager import get_standard_details
 from src.ingestion.tender_document_parser import TenderDocumentParser
 from src.llm.grounded_rationale_engine import GroundedRationaleEngine
+from src.localization.multilingual_engine import get_multilingual_representations
 from src.procurement.gem_specification_generator import GeMSpecificationGenerator
 from src.retrieval.hybrid_search_orchestrator import HybridSearchOrchestrator
 
@@ -31,6 +33,7 @@ async def lifespan(app: FastAPI):
     STATE["orchestrator"] = HybridSearchOrchestrator()
     STATE["gem_generator"] = GeMSpecificationGenerator()
     STATE["rationale_engine"] = GroundedRationaleEngine()
+    STATE["compliance_auditor"] = TenderComplianceAuditor()
     print(f"[API] Ready in {time.perf_counter() - t0:.2f}s")
     yield
 
@@ -75,6 +78,11 @@ class StandardHit(BaseModel):
     reaffirmation_year: int | None = None
     amendments_count: int = 0
     rationale: str
+    is_government_schedule_match: bool = False
+    schedule_item_title: str | None = None
+    schedule_category: str | None = None
+    matched_grade: str | None = None
+    translations: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
 class SearchResponse(BaseModel):
@@ -122,6 +130,13 @@ def search_standards(req: SearchRequest):
             confidence=r.confidence,
             use_cloud_llm=req.use_cloud_llm,
         )
+        trans = get_multilingual_representations(
+            is_code=r.is_code,
+            title=r.title,
+            scope=r.scope,
+            qco_rules=r.qco_rules,
+            confidence=r.confidence,
+        )
         hits.append(StandardHit(
             rank=r.rank,
             is_code=r.is_code,
@@ -137,6 +152,11 @@ def search_standards(req: SearchRequest):
             reaffirmation_year=r.reaffirmation_year,
             amendments_count=r.amendments_count,
             rationale=rat,
+            is_government_schedule_match=r.is_government_schedule_match,
+            schedule_item_title=r.schedule_item_title,
+            schedule_category=r.schedule_category,
+            matched_grade=r.matched_grade,
+            translations=trans,
         ))
 
     return SearchResponse(query=req.query, hits=hits, latency_seconds=round(latency, 3))
@@ -162,10 +182,13 @@ def judge_search(req: SearchRequest):
 
 @app.post("/tender-audit")
 async def audit_tender_document(file: UploadFile = File(...)):
-    """Uploads and audits a tender document (PDF or CSV BoQ) for applicable Indian Standards."""
+    """Uploads and audits a tender document (PDF or CSV BoQ) for applicable Indian Standards and Hallmarking/ISI compliance."""
     orchestrator: HybridSearchOrchestrator = STATE.get("orchestrator")
     if not orchestrator:
         raise HTTPException(status_code=503, detail="Engine initializing")
+    auditor: TenderComplianceAuditor = STATE.get("compliance_auditor")
+    if not auditor:
+        auditor = TenderComplianceAuditor()
 
     contents = await file.read()
     filename = file.filename or "tender.pdf"
@@ -173,40 +196,72 @@ async def audit_tender_document(file: UploadFile = File(...)):
     if filename.endswith(".csv"):
         text = contents.decode("utf-8", errors="ignore")
         extraction = TenderDocumentParser.parse_csv_boq(text, filename=filename)
-        # Recommend standards for extracted BoQ items
         results = []
         for item in extraction.boq_items[:10]:
             desc = item["description"]
             recs = orchestrator.search(desc, top_k=3)
+            verdict = auditor.audit_clause(desc, recs)
             results.append({
                 "item_description": desc,
                 "quantity": item.get("quantity"),
                 "unit": item.get("unit"),
+                "compliance_verdict": verdict.to_dict(),
                 "recommended_standards": [
                     {"is_code": r.is_code, "title": r.title, "confidence": r.confidence, "status": r.status}
                     for r in recs
                 ],
             })
-        return {"type": "boq", "items_audited": results, "warning": extraction.warning_message}
+        summary = auditor.summarize_document_audit([r["compliance_verdict"] for r in results])
+        return {
+            "type": "boq",
+            "items_audited": results,
+            "warning": extraction.warning_message,
+            **summary,
+        }
     else:
         # PDF Parsing
         extraction = TenderDocumentParser.parse_pdf_bytes(contents, filename=filename)
         results = []
-        for clause in extraction.technical_clauses[:5]:
-            recs = orchestrator.search(clause[:300], top_k=3)
+
+        # Audit structured BoQ items if extracted from PDF tables
+        for item in extraction.boq_items[:10]:
+            desc = item["description"]
+            recs = orchestrator.search(desc[:300], top_k=3)
+            verdict = auditor.audit_clause(desc, recs)
             results.append({
-                "clause_text": clause[:200] + "...",
+                "clause_text": desc[:200] + ("..." if len(desc) > 200 else ""),
+                "item_description": desc,
+                "quantity": item.get("quantity"),
+                "unit": item.get("unit"),
+                "compliance_verdict": verdict.to_dict(),
                 "recommended_standards": [
                     {"is_code": r.is_code, "title": r.title, "confidence": r.confidence, "status": r.status}
                     for r in recs
                 ],
             })
+
+        # Audit technical clauses / decomposed items
+        for clause in extraction.technical_clauses[:10]:
+            if any(clause.lower() in (r.get("clause_text") or "").lower() for r in results):
+                continue
+            recs = orchestrator.search(clause[:300], top_k=3)
+            verdict = auditor.audit_clause(clause, recs)
+            results.append({
+                "clause_text": clause[:200] + ("..." if len(clause) > 200 else ""),
+                "compliance_verdict": verdict.to_dict(),
+                "recommended_standards": [
+                    {"is_code": r.is_code, "title": r.title, "confidence": r.confidence, "status": r.status}
+                    for r in recs
+                ],
+            })
+        summary = auditor.summarize_document_audit([r["compliance_verdict"] for r in results])
         return {
             "type": "pdf_spec",
             "total_pages": extraction.total_pages_or_rows,
             "has_scanned_pages": extraction.has_scanned_pages,
             "clauses_analyzed": results,
             "warning": extraction.warning_message,
+            **summary,
         }
 
 

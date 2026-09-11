@@ -50,7 +50,22 @@ class BM25LexicalIndex:
         q_tokens = tokenize_text(query)
         if not q_tokens:
             return []
-        scores = self.bm25.get_scores(q_tokens)
+
+        # Enhance query tokens: expand adjacent tokens into hyphenated compounds (e.g. "ready mixed" -> "ready-mixed")
+        # and split existing hyphenated tokens (e.g. "ready-mixed" -> "ready", "mixed")
+        expanded_tokens = list(q_tokens)
+        if hasattr(self.bm25, "idf"):
+            for i in range(len(q_tokens) - 1):
+                pair = f"{q_tokens[i]}-{q_tokens[i+1]}"
+                if pair in self.bm25.idf:
+                    expanded_tokens.append(pair)
+        for tok in q_tokens:
+            if "-" in tok:
+                for sub_tok in tok.split("-"):
+                    if sub_tok and sub_tok not in expanded_tokens:
+                        expanded_tokens.append(sub_tok)
+
+        scores = self.bm25.get_scores(expanded_tokens)
         top_indices = scores.argsort()[::-1][:top_k]
 
         hits = []

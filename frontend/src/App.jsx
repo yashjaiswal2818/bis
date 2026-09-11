@@ -5,7 +5,8 @@ import SpecSearch from './components/SpecSearch';
 import TenderAuditor from './components/TenderAuditor';
 import BenchmarkSandbox from './components/BenchmarkSandbox';
 import GeMClauseModal from './components/GeMClauseModal';
-import { checkHealth, searchStandards, generateGeMClause } from './api/client';
+import StandardDetailsModal from './components/StandardDetailsModal';
+import { checkHealth, searchStandards, generateGeMClause, getStandardDetails } from './api/client';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('search');
@@ -18,11 +19,15 @@ export default function App() {
   const [searchError, setSearchError] = useState(null);
 
   // GeM Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGeMModalOpen, setIsGeMModalOpen] = useState(false);
   const [selectedISCode, setSelectedISCode] = useState('');
   const [clauseData, setClauseData] = useState(null);
   const [isClauseLoading, setIsClauseLoading] = useState(false);
   const [clauseError, setClauseError] = useState(null);
+
+  // Standard Details Modal State (Requirement 7 & 8)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailedStandard, setDetailedStandard] = useState(null);
 
   // Health Poll
   useEffect(() => {
@@ -45,7 +50,7 @@ export default function App() {
     setIsSearching(true);
     setSearchError(null);
     try {
-      const data = await searchStandards(query, 5);
+      const data = await searchStandards(query, 6);
       setSearchResults(data);
       setEngineLatency(data.latency_seconds);
     } catch (err) {
@@ -58,7 +63,7 @@ export default function App() {
 
   const handleOpenGeMClause = async (isCode) => {
     setSelectedISCode(isCode);
-    setIsModalOpen(true);
+    setIsGeMModalOpen(true);
     setIsClauseLoading(true);
     setClauseError(null);
     setClauseData(null);
@@ -72,33 +77,55 @@ export default function App() {
     }
   };
 
+  const handleViewDetails = async (standard) => {
+    // Open immediately with existing hit data
+    setDetailedStandard(standard);
+    setIsDetailsOpen(true);
+
+    // Optionally augment with full SQLite details if available
+    try {
+      const fullDetails = await getStandardDetails(standard.is_code);
+      if (fullDetails) {
+        setDetailedStandard((prev) => ({
+          ...prev,
+          ...fullDetails,
+          // Preserve runtime rationale and confidence
+          rationale: prev?.rationale || fullDetails.scope,
+          confidence: prev?.confidence || 'HIGH',
+        }));
+      }
+    } catch {
+      // Fallback seamlessly to existing hit data
+    }
+  };
+
   return (
     <div className="app-container">
       <Header isOnline={isOnline} latency={engineLatency} />
 
       {/* Navigation Tabs */}
-      <nav className="nav-bar">
+      <nav className="nav-bar" role="navigation" aria-label="Main Navigation">
         <div className="nav-inner">
           <button
             className={`nav-tab-btn ${activeTab === 'search' ? 'active' : ''}`}
             onClick={() => setActiveTab('search')}
           >
             <Search size={15} />
-            <span>Tender Specification Search</span>
+            <span>Find Standards</span>
           </button>
           <button
             className={`nav-tab-btn ${activeTab === 'tender' ? 'active' : ''}`}
             onClick={() => setActiveTab('tender')}
           >
             <FileSpreadsheet size={15} />
-            <span>Tender Document & BoQ Auditor</span>
+            <span>Tender & BoQ Auditor</span>
           </button>
           <button
             className={`nav-tab-btn ${activeTab === 'benchmark' ? 'active' : ''}`}
             onClick={() => setActiveTab('benchmark')}
           >
             <Award size={15} />
-            <span>Model Evaluation Sandbox</span>
+            <span>Evaluation Sandbox</span>
           </button>
         </div>
       </nav>
@@ -108,15 +135,20 @@ export default function App() {
         {activeTab === 'search' && (
           <SpecSearch
             onOpenGeMClause={handleOpenGeMClause}
+            onViewDetails={handleViewDetails}
             onSearch={handleSearch}
             searchResults={searchResults}
             isSearching={isSearching}
             searchError={searchError}
+            onSwitchToTender={() => setActiveTab('tender')}
           />
         )}
 
         {activeTab === 'tender' && (
-          <TenderAuditor onOpenGeMClause={handleOpenGeMClause} />
+          <TenderAuditor
+            onOpenGeMClause={handleOpenGeMClause}
+            onViewDetails={handleViewDetails}
+          />
         )}
 
         {activeTab === 'benchmark' && (
@@ -124,10 +156,18 @@ export default function App() {
         )}
       </main>
 
+      {/* Standard Details Modal (Requirement 7 & 8) */}
+      <StandardDetailsModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        standard={detailedStandard}
+        onOpenGeMClause={handleOpenGeMClause}
+      />
+
       {/* GeM Tender Specification Clause Modal */}
       <GeMClauseModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isGeMModalOpen}
+        onClose={() => setIsGeMModalOpen(false)}
         isCode={selectedISCode}
         clauseData={clauseData}
         isLoading={isClauseLoading}

@@ -285,28 +285,54 @@ def get_standard_details(is_code: str, db_path: Path = DB_PATH) -> dict[str, Any
         res = dict(row)
         # Fetch QCO rules (match exact code or base standard)
         base = res.get("base_code") or extract_base_code(res["is_code"])
-        qco_rows = conn.execute(
-            """
-            SELECT DISTINCT q.* FROM qco_compliance_rules q
-            LEFT JOIN standards_registry s ON q.is_code = s.is_code
-            WHERE q.is_code = ? OR s.base_code = ?
-            """,
-            (res["is_code"], base),
-        ).fetchall()
-        res["qco_rules"] = [dict(q) for q in qco_rows]
+        all_qco = conn.execute("SELECT * FROM qco_compliance_rules").fetchall()
+        matching_qco = []
+        seen_orders = set()
+        for q in all_qco:
+            q_dict = dict(q)
+            q_base = extract_base_code(q_dict["is_code"])
+            if q_dict["is_code"] == res["is_code"] or q_base == base:
+                order_key = (q_base, q_dict["order_name"])
+                if order_key not in seen_orders:
+                    seen_orders.add(order_key)
+                    matching_qco.append(q_dict)
+        res["qco_rules"] = matching_qco
 
-        # Fetch Allied Standards (match exact code or base standard)
+        # Fetch Allied Standards (match bidirectional: exact code or base standard as source OR target)
         allied_rows = conn.execute(
             """
-            SELECT DISTINCT a.target_is_code, a.relation_type, a.relation_label, a.is_normative, s.title
+            SELECT DISTINCT 
+                CASE 
+                    WHEN a.source_is_code = ? OR src.base_code = ? THEN a.target_is_code 
+                    ELSE a.source_is_code 
+                END AS target_is_code,
+                a.relation_type,
+                a.relation_label,
+                a.is_normative,
+                COALESCE(
+                    CASE 
+                        WHEN a.source_is_code = ? OR src.base_code = ? THEN s.title 
+                        ELSE src.title 
+                    END, 
+                    ''
+                ) AS title
             FROM allied_standards_edges a
             LEFT JOIN standards_registry src ON a.source_is_code = src.is_code
             LEFT JOIN standards_registry s ON a.target_is_code = s.is_code
-            WHERE a.source_is_code = ? OR src.base_code = ?
+            WHERE a.source_is_code = ? OR src.base_code = ? OR a.target_is_code = ? OR s.base_code = ?
             """,
-            (res["is_code"], base),
+            (res["is_code"], base, res["is_code"], base, res["is_code"], base, res["is_code"], base),
         ).fetchall()
-        res["allied_standards"] = [dict(a) for a in allied_rows]
+
+        seen_allied = set()
+        deduped_allied = []
+        for a in allied_rows:
+            a_dict = dict(a)
+            t_code = a_dict.get("target_is_code")
+            if t_code and t_code != res["is_code"] and t_code not in seen_allied:
+                seen_allied.add(t_code)
+                deduped_allied.append(a_dict)
+        res["allied_standards"] = deduped_allied
         return res
 
 
