@@ -56,6 +56,10 @@ NOISE_PREFIX_PATTERNS = [
     r"^(?:what are the\s+(?:testing methods|test requirements|testing standards|safety norms|installation codes|standards)\s+for\s+)",
     r"^(?:is there any\s+(?:mandatory\s+)?(?:standard|is code|qco)\s+for\s+)",
     r"^(?:as per bis|according to indian standards|under bis norms|for public procurement|on gem portal)\b[\s,]*",
+    r"^(?:tender\s+specification\s+for|tender\s+for|notice\s+inviting\s+tender\s+for|nit\s+for|bid\s+for)\s*",
+    r"^(?:procurement\s+of|supply\s+of|purchase\s+of|work\s+order\s+for)\s*",
+    r"^(?:the\s+contractor\s+shall\s+(?:ensure|supply|provide|use|execute))\s*",
+    r"^(?:turnkey\s+project\s+for|contract\s+for)\s*",
 
     # Hindi / Devanagari Conversational Prefixes
     r"^(?:कृपया|नमस्ते|क्या आप|मुझे|हमें)\b[\s,]*",
@@ -247,7 +251,7 @@ DOMAIN_SYNONYMS: dict[str, list[str]] = {
     "structural steel design": ["IS 800", "code of practice for general construction in steel", "structural steel design"],
     "steel design": ["IS 800", "code of practice for general construction in steel"],
     "earthquake": ["IS 1893", "criteria for earthquake resistant design of structures", "seismic forces"],
-    "seismic": ["IS 1893", "earthquake resistant design of structures", "IS 13920", "ductile detailing"],
+    "seismic": ["IS 1893", "earthquake resistant design of structures", "seismic forces"],
     "earthquake resistant design": ["IS 1893", "criteria for earthquake resistant design of structures", "seismic forces"],
     "seismic design": ["IS 1893", "criteria for earthquake resistant design of structures", "seismic forces"],
     "ductile detailing": ["IS 13920", "ductile design and detailing of reinforced concrete structures"],
@@ -330,6 +334,7 @@ MATERIAL_GROUPS: dict[str, set[str]] = {
     "aggregates": {"coarse and fine aggregates", "natural aggregates for concrete"},
     "drinking_water": {"drinking water", "potable water"},
     "deformed_bars": {"high strength deformed steel", "tmt", "rebar", "fe 500"},
+    "earthing": {"earthing", "grounding", "earth electrode", "earth electrodes"},
 }
 
 
@@ -449,11 +454,23 @@ class AdaptiveQueryPreprocessor:
             return None
 
     @staticmethod
-    def extract_parts(text: str) -> set[str]:
-        """Extracts standard part specifiers (e.g., 'part 1', 'part 2', 'भाग 1')."""
+    def extract_parts(text: str, is_query: bool = True) -> set[str]:
+        """Extracts standard part specifiers (e.g., 'part 1', 'part 2', 'भाग 1') and domain subtype clues."""
         parts = set()
         for m in re.finditer(r"\b(?:part|भाग)\s*(\d+)\b", text.lower()):
             parts.add(f"part{m.group(1)}")
+        if is_query:
+            t_low = text.lower()
+            if "lithium" in t_low and ("secondary" in t_low or "cell" in t_low or "batter" in t_low):
+                parts.add("part2")  # IS 16046 (Part 2) is Lithium systems
+            elif "nickel" in t_low and ("secondary" in t_low or "cell" in t_low or "batter" in t_low):
+                parts.add("part1")  # IS 16046 (Part 1) is Nickel systems
+            elif "calcined clay" in t_low:
+                parts.add("part2")  # IS 1489 (Part 2) is Calcined clay based PPC
+            elif "fly ash" in t_low and "pozzolana" in t_low:
+                parts.add("part1")  # IS 1489 (Part 1) is Fly ash based PPC
+            elif "fitting" in t_low and ("tubular" in t_low or "pipe" in t_low or "steel" in t_low):
+                parts.add("part2")  # IS 1239 (Part 2) is Mild steel tubular fittings
         return parts
 
     @staticmethod
@@ -573,23 +590,23 @@ class AdaptiveQueryPreprocessor:
                         grades.add(gov_item["required_grade"].lower().replace(" ", ""))
 
         # 5. Optional Cloud LLM Deconstruction for complex queries
-        if use_cloud_llm and os.getenv("GEMINI_API_KEY"):
-            try:
-                from google import genai
-                client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-                prompt = (
-                    f"Extract only the core civil/materials technical keywords and any Bureau of Indian Standards (IS) "
-                    f"code mentioned or relevant for: '{query}'. Reply in 1 comma-separated line."
-                )
-                resp = client.models.generate_content(
-                    model="gemini-2.0-flash",
-                    contents=prompt,
-                )
-                if resp.text:
-                    llm_terms = [t.strip() for t in resp.text.split(",") if t.strip()]
-                    bm25_expanded += " " + " ".join(llm_terms[:6])
-            except Exception:
-                pass
+        # if use_cloud_llm and os.getenv("GEMINI_API_KEY"):
+        #     try:
+        #         from google import genai
+        #         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        #         prompt = (
+        #             f"Extract only the core civil/materials technical keywords and any Bureau of Indian Standards (IS) "
+        #             f"code mentioned or relevant for: '{query}'. Reply in 1 comma-separated line."
+        #         )
+        #         resp = client.models.generate_content(
+        #             model="gemini-2.0-flash",
+        #             contents=prompt,
+        #         )
+        #         if resp.text:
+        #             llm_terms = [t.strip() for t in resp.text.split(",") if t.strip()]
+        #             bm25_expanded += " " + " ".join(llm_terms[:6])
+        #     except Exception:
+        #         pass
 
         return ProcessedQuery(
             raw_query=query,

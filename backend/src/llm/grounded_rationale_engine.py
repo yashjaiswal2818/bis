@@ -22,9 +22,13 @@ class GroundedRationaleEngine:
         scope: str,
         qco_rules: list[dict[str, Any]],
         confidence: str,
+        knowledge_strip: str | None = None,
     ) -> str:
         """Generates an instant, fact-based grounded explanation without external APIs."""
-        scope_snippet = (scope[:220].strip() + "...") if len(scope) > 220 else (scope or title)
+        if knowledge_strip and len(knowledge_strip.strip()) >= 15:
+            scope_snippet = knowledge_strip.strip()
+        else:
+            scope_snippet = (scope[:220].strip() + "...") if len(scope) > 220 else (scope or title)
 
         # Check if QCO applies
         qco_text = ""
@@ -48,19 +52,23 @@ class GroundedRationaleEngine:
         qco_rules: list[dict[str, Any]],
         confidence: str,
         use_cloud_llm: bool = False,
+        knowledge_strip: str | None = None,
     ) -> str:
         """Generates rationale, using offline mode by default or cloud if requested and keys exist."""
         if not use_cloud_llm or (not self.gemini_key and not self.groq_key):
-            return self.generate_offline_rationale(query, is_code, title, scope, qco_rules, confidence)
+            return self.generate_offline_rationale(
+                query, is_code, title, scope, qco_rules, confidence, knowledge_strip=knowledge_strip
+            )
 
         # Cloud generation fallback
         try:
             if self.gemini_key:
                 from google import genai
                 client = genai.Client(api_key=self.gemini_key)
+                grounding_text = knowledge_strip or scope[:300]
                 prompt = (
                     f"In 2 crisp sentences, explain to a procurement officer why Indian Standard {is_code} "
-                    f"({title}) is the correct standard for: \"{query}\". Ground strictly on this scope: \"{scope[:300]}\"."
+                    f"({title}) is the correct standard for: \"{query}\". Ground strictly on this scope: \"{grounding_text}\"."
                 )
                 resp = client.models.generate_content(
                     model="gemini-2.0-flash",
@@ -72,4 +80,6 @@ class GroundedRationaleEngine:
             pass
 
         # Default back to offline rationale if cloud fails
-        return self.generate_offline_rationale(query, is_code, title, scope, qco_rules, confidence)
+        return self.generate_offline_rationale(
+            query, is_code, title, scope, qco_rules, confidence, knowledge_strip=knowledge_strip
+        )

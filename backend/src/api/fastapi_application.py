@@ -82,6 +82,7 @@ class StandardHit(BaseModel):
     schedule_item_title: str | None = None
     schedule_category: str | None = None
     matched_grade: str | None = None
+    knowledge_strip: str | None = None
     translations: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
@@ -129,6 +130,7 @@ def search_standards(req: SearchRequest):
             qco_rules=r.qco_rules,
             confidence=r.confidence,
             use_cloud_llm=req.use_cloud_llm,
+            knowledge_strip=r.knowledge_strip,
         )
         trans = get_multilingual_representations(
             is_code=r.is_code,
@@ -156,6 +158,7 @@ def search_standards(req: SearchRequest):
             schedule_item_title=r.schedule_item_title,
             schedule_category=r.schedule_category,
             matched_grade=r.matched_grade,
+            knowledge_strip=r.knowledge_strip,
             translations=trans,
         ))
 

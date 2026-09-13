@@ -31,9 +31,10 @@ from src.retrieval.bm25_lexical_indexer import BM25LexicalIndex
 from src.retrieval.cross_encoder_reranker import auto_clamp_rerank_pool, get_reranker, rerank_pairs
 
 # Harmonize PyTorch OpenMP runtime before C++ FAISS library load on Windows
-get_embedder()
 get_reranker()
+get_embedder()
 
+from src.retrieval.corrective_evaluator import CorrectiveEvaluator
 from src.retrieval.faiss_vector_indexer import FAISSDenseIndex
 from src.retrieval.query_preprocessor import AdaptiveQueryPreprocessor, ProcessedQuery
 
@@ -60,6 +61,7 @@ class RecommendedStandard:
     schedule_item_title: str | None = None
     schedule_category: str | None = None
     matched_grade: str | None = None
+    knowledge_strip: str | None = None
 
 
 def get_confidence_band(score: float) -> str:
@@ -69,6 +71,20 @@ def get_confidence_band(score: float) -> str:
     elif score >= 0.40:
         return "MEDIUM"
     return "LOW"
+
+
+MATERIAL_SPECIFICITY_REGISTRY: dict[str, tuple[list[str], list[str], float, float]] = {
+    "slag_cement": (["slag", "455"], ["ordinary"], 0.35, 0.25),
+    "supersulphated": (["supersulphated", "6909"], [], 0.35, 0.0),
+    "white_cement": (["white", "8042"], [], 0.35, 0.0),
+    "deformed_bars": (["deformed", "1786"], ["general structural"], 0.35, 0.20),
+    "asbestos_sheets": (["asbestos", "459"], [], 0.35, 0.0),
+    "concrete_pipes": (["pipe", "458"], [], 0.35, 0.0),
+    "concrete_blocks": (["block", "2185"], [], 0.35, 0.0),
+    "aggregates": (["aggregate", "383"], [], 0.35, 0.0),
+    "drinking_water": (["drinking water", "10500"], [], 0.35, 0.0),
+    "earthing": (["earthing", "3043"], ["storage tanks", "petroleum", "cylindrical"], 0.45, 0.35),
+}
 
 
 def compute_precision_alignment(
@@ -98,8 +114,8 @@ def compute_precision_alignment(
                 score -= 0.25
 
     # 2. Part matching (e.g. Part 1 vs Part 2)
-    q_parts = detected_parts if detected_parts is not None else AdaptiveQueryPreprocessor.extract_parts(query)
-    doc_parts = AdaptiveQueryPreprocessor.extract_parts(doc_text)
+    q_parts = detected_parts if detected_parts is not None else AdaptiveQueryPreprocessor.extract_parts(query, is_query=True)
+    doc_parts = AdaptiveQueryPreprocessor.extract_parts(doc_text, is_query=False)
     if q_parts:
         if q_parts.intersection(doc_parts):
             score += 0.30
@@ -109,11 +125,14 @@ def compute_precision_alignment(
     # 3. Material Specificity Guard (prevents ordinary cement from displacing slag/calcined clay/supersulphated)
     materials = detected_materials if detected_materials is not None else AdaptiveQueryPreprocessor.detect_materials(query)
     if materials:
-        if "slag_cement" in materials:
-            if "slag" in doc_text or "455" in is_code:
-                score += 0.35
-            elif "ordinary" in doc_text:
-                score -= 0.25
+        for mat, (pos_terms, neg_terms, pos_boost, neg_pen) in MATERIAL_SPECIFICITY_REGISTRY.items():
+            if mat in materials:
+                if any(pt in doc_text or pt in is_code.lower() for pt in pos_terms):
+                    score += pos_boost
+                elif any(nt in doc_text for nt in neg_terms):
+                    score -= neg_pen
+
+        # Specialized multi-part PPC cement disambiguation
         if "calcined_clay" in materials:
             if "calcined clay" in doc_text or ("1489" in is_code and "part 2" in doc_text):
                 score += 0.35
@@ -122,32 +141,11 @@ def compute_precision_alignment(
         if "fly_ash" in materials:
             if "fly ash" in doc_text or ("1489" in is_code and "part 1" in doc_text):
                 score += 0.35
-        if "supersulphated" in materials:
-            if "supersulphated" in doc_text or "6909" in is_code:
-                score += 0.35
-        if "white_cement" in materials:
-            if "white" in doc_text or "8042" in is_code:
-                score += 0.35
-        if "deformed_bars" in materials:
-            if "deformed" in doc_text or "1786" in is_code:
-                score += 0.35
-            elif "general structural" in doc_text:
-                score -= 0.20
-        if "asbestos_sheets" in materials:
-            if "asbestos" in doc_text or "459" in is_code:
-                score += 0.35
-        if "concrete_pipes" in materials:
-            if "pipe" in doc_text or "458" in is_code:
-                score += 0.35
-        if "concrete_blocks" in materials:
-            if "block" in doc_text or "2185" in is_code:
-                score += 0.35
-        if "aggregates" in materials:
-            if "aggregate" in doc_text or "383" in is_code:
-                score += 0.35
-        if "drinking_water" in materials:
-            if "drinking water" in doc_text or "10500" in is_code:
-                score += 0.35
+
+    # 3.5 Bilingual Demotion Guard: in English queries, demote duplicate bilingual (B) records
+    has_indic = any(ord(c) > 127 for c in query)
+    if not has_indic and "(b)" in doc_text:
+        score -= 0.25
 
     # 4. Title keyword overlap boost (excluding procedural boilerplate words)
     stop_words = {
@@ -172,8 +170,12 @@ def compute_precision_alignment(
         if any(t in title_lower for t in ["method of test", "testing", "sampling", "determination", "analysis"]):
             score += 0.30
     elif intent == "CODE_OF_PRACTICE":
-        if "code of practice" in title_lower:
+        if "code of practice" in title_lower or "criteria for" in title_lower or "criteria" in title_lower:
             score += 0.30
+
+    # 6. Specificity Guard: penalize specialized ductile detailing when query only asks for general earthquake design
+    if "ductile" in title_lower and "ductile" not in query.lower():
+        score -= 0.20
 
     return score
 
@@ -318,8 +320,8 @@ class HybridSearchOrchestrator:
 
         has_verified_code = bool(direct_matches)
         has_strong_dense = max_dense >= 0.46
-        has_strong_bm25 = max_bm25 >= 30.0
-        has_dual_signal = max_dense >= 0.43 and max_bm25 >= 22.0
+        has_strong_bm25 = max_bm25 >= 60.0 or (max_dense >= 0.44 and max_bm25 >= 28.0)
+        has_dual_signal = max_dense >= 0.43 and max_bm25 >= 24.0
 
         # Immediate rejection for unverified IS codes (e.g. IS 99999999) without extensive engineering text
         if processed.direct_is_codes and not direct_matches:
@@ -480,6 +482,15 @@ class HybridSearchOrchestrator:
                 schedule_category = gov_item.get("schedule_category")
                 matched_grade = gov_item.get("required_grade")
 
+            knowledge_strip = CorrectiveEvaluator.extract_knowledge_strip(
+                query=query,
+                is_code=code,
+                title=title,
+                scope=scope,
+                detected_grades=processed.detected_grades,
+                detected_materials=processed.detected_materials,
+            )
+
             final_results.append(RecommendedStandard(
                 rank=rank,
                 is_code=code,
@@ -498,6 +509,7 @@ class HybridSearchOrchestrator:
                 schedule_item_title=schedule_item_title,
                 schedule_category=schedule_category,
                 matched_grade=matched_grade,
+                knowledge_strip=knowledge_strip,
             ))
 
         # Sort strictly by precision rerank score (no artificial pinning that overrides better matches)
