@@ -91,10 +91,8 @@ class APISetuBISGateway:
                 SELECT product_category, scheme_type, is_mandatory, issuing_ministry,
                        order_name, effective_date, compliance_warning
                 FROM qco_compliance_rules
-                WHERE is_code = ? OR is_code LIKE ?
                 WHERE is_code = ? OR is_code LIKE ? OR (length(?) >= 2 AND is_code LIKE ?)
                 """,
-                (row["is_code"], f"{row['is_code']}%"),
                 (row["is_code"], f"{row['is_code']}%", num_str, f"%{num_str}%"),
             ).fetchall()
 
@@ -130,13 +128,11 @@ class APISetuBISGateway:
             rows = conn.execute(
                 """
                 SELECT * FROM qco_compliance_rules
-                WHERE is_code = ? OR is_code LIKE ? OR is_code LIKE ?
                 WHERE is_code = ?
                    OR is_code LIKE ?
                    OR (length(?) >= 2 AND is_code LIKE ?)
                 ORDER BY is_mandatory DESC
                 """,
-                (is_code, f"{base_code}%", f"%{base_code}%"),
                 (is_code, f"%{is_code}%", num, f"%{num}%"),
             ).fetchall()
 
@@ -172,10 +168,6 @@ class APISetuBISGateway:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """
-                SELECT target_is_code, target_title, relationship_type, strength
-                FROM allied_standards_edges
-                WHERE source_is_code = ? OR source_base_code = ?
-                ORDER BY strength DESC
                 SELECT e.target_is_code, e.relation_type, e.relation_label, e.is_normative,
                        s.title as target_title
                 FROM allied_standards_edges e
@@ -185,7 +177,6 @@ class APISetuBISGateway:
                    OR (length(?) >= 2 AND e.source_is_code LIKE ?)
                 LIMIT 20
                 """,
-                (is_code, base_code),
                 (is_code, f"%{is_code}%", num, f"%{num}%"),
             ).fetchall()
             return [dict(r) for r in rows]

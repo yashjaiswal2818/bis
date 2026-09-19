@@ -5,6 +5,7 @@ allied standards graph inspection, and GeM specification clause generation.
 """
 from __future__ import annotations
 
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -14,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.compliance.tender_compliance_auditor import TenderComplianceAuditor
-from src.database.sqlite_manager import get_standard_details
+from src.database.sqlite_manager import get_connection, get_standard_details
 from src.ingestion.tender_document_parser import TenderDocumentParser
 from src.llm.grounded_rationale_engine import GroundedRationaleEngine
 from src.integration.apisetu_gateway import APISetuBISGateway
@@ -199,6 +200,12 @@ def judge_search(req: SearchRequest):
     }
 
 
+# Each audited line item runs a full hybrid search (measured ~6-10 s on CPU), so the cap is a
+# latency guard, not a parser limit. The response always reports items_parsed vs items_assessed
+# so the UI can say how many rows were left out. Override with TENDER_AUDIT_MAX_ITEMS.
+MAX_AUDIT_ITEMS = int(os.getenv("TENDER_AUDIT_MAX_ITEMS", "10"))
+
+
 @app.post("/tender-audit")
 async def audit_tender_document(file: UploadFile = File(...)):
     """Uploads and audits a tender document (PDF or CSV BoQ) for applicable Indian Standards and Hallmarking/ISI compliance."""
@@ -216,7 +223,8 @@ async def audit_tender_document(file: UploadFile = File(...)):
         text = contents.decode("utf-8", errors="ignore")
         extraction = TenderDocumentParser.parse_csv_boq(text, filename=filename)
         results = []
-        for item in extraction.boq_items[:10]:
+        items_parsed = len(extraction.boq_items)
+        for item in extraction.boq_items[:MAX_AUDIT_ITEMS]:
             desc = item["description"]
             recs = orchestrator.search(desc, top_k=3)
             verdict = auditor.audit_clause(desc, recs)
@@ -230,11 +238,15 @@ async def audit_tender_document(file: UploadFile = File(...)):
                     for r in recs
                 ],
             })
-        summary = auditor.summarize_document_audit([r["compliance_verdict"] for r in results])
+        summary = auditor.summarize_document_audit(
+            [r["compliance_verdict"] for r in results], items_parsed=items_parsed
+        )
         return {
             "type": "boq",
             "items_audited": results,
             "warning": extraction.warning_message,
+            "audit_cap": MAX_AUDIT_ITEMS,
+            "audit_truncated": items_parsed > len(results),
             **summary,
         }
     else:
@@ -243,7 +255,8 @@ async def audit_tender_document(file: UploadFile = File(...)):
         results = []
 
         # Audit structured BoQ items if extracted from PDF tables
-        for item in extraction.boq_items[:10]:
+        items_parsed = len(extraction.boq_items) + len(extraction.technical_clauses)
+        for item in extraction.boq_items[:MAX_AUDIT_ITEMS]:
             desc = item["description"]
             recs = orchestrator.search(desc[:300], top_k=3)
             verdict = auditor.audit_clause(desc, recs)
@@ -259,8 +272,10 @@ async def audit_tender_document(file: UploadFile = File(...)):
                 ],
             })
 
-        # Audit technical clauses / decomposed items
-        for clause in extraction.technical_clauses[:10]:
+        # Audit technical clauses / decomposed items, up to the same overall cap
+        for clause in extraction.technical_clauses:
+            if len(results) >= MAX_AUDIT_ITEMS:
+                break
             if any(clause.lower() in (r.get("clause_text") or "").lower() for r in results):
                 continue
             recs = orchestrator.search(clause[:300], top_k=3)
@@ -273,13 +288,17 @@ async def audit_tender_document(file: UploadFile = File(...)):
                     for r in recs
                 ],
             })
-        summary = auditor.summarize_document_audit([r["compliance_verdict"] for r in results])
+        summary = auditor.summarize_document_audit(
+            [r["compliance_verdict"] for r in results], items_parsed=items_parsed
+        )
         return {
             "type": "pdf_spec",
             "total_pages": extraction.total_pages_or_rows,
             "has_scanned_pages": extraction.has_scanned_pages,
             "clauses_analyzed": results,
             "warning": extraction.warning_message,
+            "audit_cap": MAX_AUDIT_ITEMS,
+            "audit_truncated": items_parsed > len(results),
             **summary,
         }
 
@@ -319,6 +338,115 @@ def apisetu_check_qco(is_code: str):
     if not gateway:
         gateway = APISetuBISGateway()
     return gateway.check_qco_compliance(is_code)
+
+
+# Harvest pipeline of record; see src/ingestion/harvest_national_catalog.py.
+REGISTRY_SOURCE = (
+    "archive.org \u00b7 collection:publicsafetycode / gov.in.is "
+    "(Indian Standards mirror); QCO notifications from bis.gov.in Scheme-I and crsbis.in"
+)
+
+
+@app.get("/api/registry-stats")
+def registry_stats():
+    """Read-only registry counts for the console. Cached after first call."""
+    cached = STATE.get("registry_stats")
+    if cached is not None:
+        return cached
+
+    # Normalizes the messy scheme_type strings into the three BIS scheme families.
+    scheme_case = """
+        CASE WHEN scheme_type LIKE 'Scheme-II %' OR scheme_type LIKE 'Scheme-II(%'
+                  THEN 'Scheme-II (CRS)'
+             WHEN scheme_type LIKE 'Scheme-IV%' THEN 'Scheme-IV (Hallmarking)'
+             WHEN scheme_type LIKE 'Scheme-I%'  THEN 'Scheme-I (ISI Mark)'
+             ELSE 'Other' END
+    """
+    badge_case = scheme_case.replace("scheme_type", "r.scheme_type") \
+        .replace("'Scheme-II (CRS)'", "'CRS'") \
+        .replace("'Scheme-IV (Hallmarking)'", "'Hallmarking'") \
+        .replace("'Scheme-I (ISI Mark)'", "'ISI'")
+    title_expr = "COALESCE(NULLIF(TRIM(s.title),''), r.product_category)"
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        total = cur.execute("SELECT COUNT(*) FROM standards_registry").fetchone()[0]
+        qco_total = cur.execute(
+            "SELECT COUNT(*) FROM qco_compliance_rules WHERE is_mandatory=1").fetchone()[0]
+
+        schemes = [
+            {"scheme": r[0], "count": r[1]}
+            for r in cur.execute(
+                f"SELECT {scheme_case} AS fam, COUNT(*) FROM qco_compliance_rules "
+                "WHERE is_mandatory=1 GROUP BY fam ORDER BY COUNT(*) DESC").fetchall()
+        ]
+
+        divisions = [
+            {"name": r[0], "count": r[1]}
+            for r in cur.execute(
+                "SELECT division, COUNT(*) FROM standards_registry "
+                "WHERE division IS NOT NULL AND TRIM(division) <> '' "
+                "GROUP BY division ORDER BY COUNT(*) DESC LIMIT 8").fetchall()
+        ]
+
+        # Balanced across scheme families so every badge type is represented.
+        samples = []
+        for badge, limit in (("Hallmarking", 2), ("CRS", 2), ("ISI", 2)):
+            rows = cur.execute(
+                f"SELECT r.is_code, {title_expr} AS title, {badge_case} AS badge, r.order_name "
+                "FROM qco_compliance_rules r "
+                "LEFT JOIN standards_registry s ON s.is_code = r.is_code "
+                f"WHERE r.is_mandatory=1 AND TRIM(COALESCE({title_expr},'')) <> '' "
+                f"AND ({badge_case}) = ? ORDER BY LENGTH(title) ASC, r.is_code LIMIT {limit}",
+                (badge,)).fetchall()
+            samples.extend(
+                {"is_code": r[0], "title": r[1], "scheme": r[2], "order_name": r[3]}
+                for r in rows
+            )
+    finally:
+        conn.close()
+
+    # Provenance. snapshot_date and coverage are computed live; REGISTRY_SOURCE is a
+    # constant describing the harvest pipeline (see ingestion/harvest_national_catalog.py).
+    conn2 = get_connection()
+    try:
+        c2 = conn2.cursor()
+        snapshot = c2.execute("SELECT MAX(created_at) FROM standards_registry").fetchone()[0]
+        with_year = c2.execute(
+            "SELECT COUNT(*) FROM standards_registry WHERE revision IS NOT NULL "
+            "AND TRIM(revision) <> ''").fetchone()[0]
+        superseded = c2.execute(
+            "SELECT COUNT(*) FROM standards_registry WHERE status = 'SUPERSEDED'").fetchone()[0]
+    finally:
+        conn2.close()
+
+    provenance = {
+        "source": REGISTRY_SOURCE,
+        "snapshot_date": (snapshot or "").split(" ")[0] or None,
+        "snapshot_date_basis": (
+            "latest created_at ingestion timestamp in standards_registry" if snapshot else None
+        ),
+        "edition_coverage": (
+            f"revision field populated on {with_year:,} of {total:,} records"
+        ),
+        "supersession_coverage": (
+            f"{superseded:,} of {total:,} records carry a SUPERSEDED status; "
+            "the remainder default to ACTIVE and are not individually verified"
+        ),
+    }
+
+    payload = {
+        "data_provenance": provenance,
+        "total_standards": total,
+        "qco_notified_count": qco_total,
+        "scheme_count": len(schemes),
+        "scheme_breakdown": schemes,
+        "divisions": divisions,
+        "qco_samples": samples,
+    }
+    STATE["registry_stats"] = payload
+    return payload
 
 
 @app.get("/api/v1/bis/standards/{is_code}/allied")

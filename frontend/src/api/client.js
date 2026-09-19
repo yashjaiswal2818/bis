@@ -14,6 +14,12 @@ export async function checkHealth() {
   }
 }
 
+export async function getRegistryStats() {
+  const res = await fetch(`${API_BASE}/api/registry-stats`);
+  if (!res.ok) throw new Error(`Registry stats failed with status ${res.status}`);
+  return await res.json();
+}
+
 export async function searchStandards(query, topK = 5, useCloudLLM = false) {
   const res = await fetch(`${API_BASE}/search`, {
     method: 'POST',

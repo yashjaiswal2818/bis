@@ -36,10 +36,11 @@ class GeMSpecificationGenerator:
         allied_data = self.allied_classifier.get_classified_allied_standards(active_code)
 
         # 1. Product Conformance Clause
-        revision_text = f" (incorporating {lifecycle.amendments_count} amendments)" if lifecycle.amendments_count else ""
+        # Amendment counts have no verified source in the registry snapshot, so no count is
+        # stated in tender text. Clause 4 puts edition currency on the bidder instead.
         product_clause = (
             f"1. PRODUCT SPECIFICATION & CONFORMANCE:\n"
-            f"   The supplied item shall strictly conform to Indian Standard {active_code}{revision_text}. "
+            f"   The supplied item shall strictly conform to Indian Standard {active_code}. "
             f"   Any supply deviating from the physical, chemical, or mechanical requirements of this standard "
             f"   shall be summarily rejected at the consignee's end."
         )
@@ -94,7 +95,14 @@ class GeMSpecificationGenerator:
                 "   Third-party testing from a NABL-accredited laboratory may be required by the buyer."
             )
 
-        full_text = f"{product_clause}\n\n{qco_clause}\n\n{testing_clause}"
+        # Standard procurement practice: the bidder verifies edition currency at tender date.
+        edition_clause = (
+            "4. EDITION CURRENCY:\n"
+            "   Bidder shall confirm the current edition of the cited standard as on the date "
+            "of tender publication."
+        )
+
+        full_text = f"{product_clause}\n\n{qco_clause}\n\n{testing_clause}\n\n{edition_clause}"
 
         return GeMSpecificationClause(
             is_code=active_code,

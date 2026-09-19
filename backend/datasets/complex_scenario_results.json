@@ -1,0 +1,314 @@
+[
+ {
+  "id": "CPLX-01",
+  "dimension": "Tender Legalese",
+  "query": "Municipal PHE tender for centrifugally cast ductile iron pressure pipes",
+  "expected": "IS 8329",
+  "top1": "IS 1536: 2001",
+  "top3": [
+   "IS 1536: 2001",
+   "IS 8329: 2000",
+   "IS 6163: 1978"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": false,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-02",
+  "dimension": "Tender Legalese",
+  "query": "CPWD tender for structural steel sections joists angles and tees",
+  "expected": "IS 2062",
+  "top1": "IS 2062: 2011",
+  "top3": [
+   "IS 2062: 2011",
+   "IS 2062: 1999",
+   "IS 800: 2007"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-03",
+  "dimension": "Tender Legalese",
+  "query": "MoRTH highway bridge pre-stressing low relaxation 7-ply strands",
+  "expected": "IS 14268",
+  "top1": "IS 14268: 1995",
+  "top3": [
+   "IS 14268: 1995",
+   "IS 2140: 1978",
+   "IS 1343: 2012"
+  ],
+  "hits_returned": 3,
+  "confidence": "MEDIUM",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-04",
+  "dimension": "Multi-Part Series",
+  "query": "Mild steel wrought pipe fittings Part 2 not tubes Part 1",
+  "expected": "IS 1239 (Part 2)",
+  "top1": "IS 432 (Part 1): 1982",
+  "top3": [
+   "IS 432 (Part 1): 1982",
+   "IS 1239 (Part 1): 2004",
+   "IS 432 (Part II): 1982"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": false,
+  "hit_at_3": false
+ },
+ {
+  "id": "CPLX-05",
+  "dimension": "Multi-Part Series",
+  "query": "Lithium secondary cells Part 2 not Nickel Part 1 under MeitY CRS",
+  "expected": "IS 16046 (Part 2)",
+  "top1": "IS 16046 (Part 1): 2018",
+  "top3": [
+   "IS 16046 (Part 1): 2018",
+   "IS 16046 (Part 2): 2018",
+   "IS 13252 (Part 1): 2010"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": false,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-06",
+  "dimension": "Multi-Part Series",
+  "query": "Calcined clay Portland pozzolana cement Part 2 not fly ash Part 1",
+  "expected": "IS 1489 (Part 2)",
+  "top1": "IS 1489 (Part 2): 1991",
+  "top3": [
+   "IS 1489 (Part 2): 1991",
+   "IS 1489 (Part 1): 1991",
+   "IS 4845: 1968"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-07",
+  "dimension": "Intent Disambiguation",
+  "query": "Method of test for compressive strength of concrete cubes",
+  "expected": "IS 516",
+  "top1": "IS 516: 1959",
+  "top3": [
+   "IS 516: 1959",
+   "IS 4031 (Part 6): 1988",
+   "IS 516: 2021"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-08",
+  "dimension": "Intent Disambiguation",
+  "query": "Method of test for cement fineness by dry sieving 90 micron",
+  "expected": "IS 4031 (Part 1)",
+  "top1": "IS 4031 (Part 1): 1996",
+  "top3": [
+   "IS 4031 (Part 1): 1996",
+   "IS 4031 (Part 15): 1991",
+   "IS 7509: 1993"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-09",
+  "dimension": "Intent Disambiguation",
+  "query": "Code of practice for design and construction in structural steel",
+  "expected": "IS 800",
+  "top1": "IS 800: 2007",
+  "top3": [
+   "IS 800: 2007",
+   "IS 2062: 1999",
+   "IS 2062: 2011"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-10",
+  "dimension": "Intent Disambiguation",
+  "query": "Seismic design criteria and response reduction factor not ductile detailing",
+  "expected": "IS 1893",
+  "top1": "IS 13920: 2016",
+  "top3": [
+   "IS 13920: 2016",
+   "IS 1893 (Part 1): 2016",
+   "IS 875 (Part 3): 2015"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": false,
+  "hit_at_3": false
+ },
+ {
+  "id": "CPLX-11",
+  "dimension": "Mandatory QCO",
+  "query": "DPIIT mandatory quality control order for children toys safety",
+  "expected": "IS 9873",
+  "top1": "IS 15644",
+  "top3": [
+   "IS 15644",
+   "IS 15644: 2006",
+   "IS 15533"
+  ],
+  "hits_returned": 3,
+  "confidence": "MEDIUM",
+  "hit_at_1": false,
+  "hit_at_3": false
+ },
+ {
+  "id": "CPLX-12",
+  "dimension": "Mandatory QCO",
+  "query": "MoRTH statutory protective helmets for two-wheeler riders",
+  "expected": "IS 4151",
+  "top1": "IS 4151: 2015",
+  "top3": [
+   "IS 4151: 2015",
+   "IS 4151",
+   "IS 2925: 1984"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-13",
+  "dimension": "Mandatory QCO",
+  "query": "Packaged drinking water mandatory ISI mark certification",
+  "expected": "IS 14543",
+  "top1": "IS 14543: 2016",
+  "top3": [
+   "IS 14543: 2016",
+   "IS 10500: 2012",
+   "IS 14543"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-14",
+  "dimension": "MEP Engineering",
+  "query": "Three phase outdoor oil-immersed distribution transformers",
+  "expected": "IS 1180",
+  "top1": "IS 1180: 2018",
+  "top3": [
+   "IS 1180: 2018",
+   "IS 7098 (Part 1): 1988",
+   "IS 694: 1990"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-15",
+  "dimension": "MEP Engineering",
+  "query": "Code of practice for electrical earthing systems and earth electrodes",
+  "expected": "IS 3043",
+  "top1": "IS 3043",
+  "top3": [
+   "IS 3043",
+   "IS 3043: 1987",
+   "IS 3043: 2018"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-16",
+  "dimension": "MEP Engineering",
+  "query": "Submersible pumpsets for deep well irrigation and water supply",
+  "expected": "IS 8034",
+  "top1": "IS 8034",
+  "top3": [
+   "IS 8034",
+   "IS 9283: 1995",
+   "IS 9283"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-17",
+  "dimension": "Colloquial & Hinglish",
+  "query": "RCC chhat ke water leakage ko rokne ke liye waterproofing",
+  "expected": "IS 2645",
+  "top1": "IS 3370 (Part 2): 2009",
+  "top3": [
+   "IS 3370 (Part 2): 2009",
+   "IS 3370 (Part 1): 2009",
+   "IS 456"
+  ],
+  "hits_returned": 3,
+  "confidence": "MEDIUM",
+  "hit_at_1": false,
+  "hit_at_3": false
+ },
+ {
+  "id": "CPLX-18",
+  "dimension": "Colloquial & Trade Jargon",
+  "query": "Makaan aur building slab dhalai Fe 500D grade sariya TMT bar",
+  "expected": "IS 1786",
+  "top1": "IS 1786: 2008",
+  "top3": [
+   "IS 1786: 2008",
+   "IS 1786: 1985",
+   "IS 13620: 1993"
+  ],
+  "hits_returned": 3,
+  "confidence": "HIGH",
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-19",
+  "dimension": "Out-of-Domain Gate",
+  "query": "Hyderabadi biryani recipe with basmati rice and saffron",
+  "expected": "NONE",
+  "top1": null,
+  "top3": [],
+  "hits_returned": 0,
+  "confidence": null,
+  "hit_at_1": true,
+  "hit_at_3": true
+ },
+ {
+  "id": "CPLX-20",
+  "dimension": "Out-of-Domain Gate",
+  "query": "How do I set up React with Vite and Tailwind CSS",
+  "expected": "NONE",
+  "top1": null,
+  "top3": [],
+  "hits_returned": 0,
+  "confidence": null,
+  "hit_at_1": true,
+  "hit_at_3": true
+ }
+]

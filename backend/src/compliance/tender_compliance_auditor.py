@@ -94,6 +94,12 @@ class ItemAuditVerdict:
     # Statutory QCO Rules
     qco_details: dict[str, Any] | None = None
 
+    # Four-state audit status. Every parsed item gets exactly one of these.
+    # NO_CONFIDENT_MATCH is the default: an item we could not assess has not passed.
+    audit_status: str = "NO_CONFIDENT_MATCH"
+    audit_status_reason: str = "Retrieval confidence below HIGH; not assessed."
+    match_confidence: str | None = None
+
     # Overall Item Verdict
     is_fine: bool
     verdict: str  # "Everything is fine" when compliant
@@ -130,7 +136,23 @@ class ItemAuditVerdict:
             "any_mark_missing": self.any_mark_missing,
             "missing_mark_label": self.missing_mark_label,
             "qco_details": self.qco_details,
+            "audit_status": self.audit_status,
+            "audit_status_reason": self.audit_status_reason,
+            "match_confidence": self.match_confidence,
+            "recommended_is_code": self.recommended_is_code,
+            "recommended_title": self.recommended_title,
+            "clause_text": self.clause_text,
         }
+
+
+AUDIT_STATES = ("COMPLIANT", "QCO_REQUIRED", "STANDARD_SUGGESTED", "NO_CONFIDENT_MATCH")
+
+
+def _top_confidence(std: Any) -> str | None:
+    """Reads the retrieval confidence band off a dict or RecommendedStandard. No new threshold."""
+    if isinstance(std, dict):
+        return std.get("confidence")
+    return getattr(std, "confidence", None)
 
 
 class TenderComplianceAuditor:
@@ -189,59 +211,31 @@ class TenderComplianceAuditor:
         - If no standards match: checks for exempt service (NOT_APPLICABLE), otherwise UNVERIFIED.
         - If standards match: verifies code citation, currency, and mandatory certification marks.
         """
-        # Fail-closed check: No recommended standards available
+        # Fail-closed: no retrieval hits at all. An item we could not assess has not passed,
+        # so this reports NO_CONFIDENT_MATCH rather than the previous "Everything is fine".
         if not recommended_standards:
+            exempt = self._is_exempt_service(clause_text)
+            reason = (
+                "Reads as non-standardised labour or service; no Indian Standard matched."
+                if exempt
+                else "No Indian Standard matched above the relevance floor. Needs manual review."
+            )
             return ItemAuditVerdict(
                 clause_text=clause_text,
                 recommended_is_code=None,
                 recommended_title=None,
-                is_code_missing=False,
+                is_code_missing=True,
                 missing_is_code=None,
                 detected_is_code=None,
-                scheme_type=None,
-                hallmark_required=False,
-                hallmark_missing=False,
-                missing_hallmark=None,
-                isi_mark_required=False,
-                isi_mark_missing=False,
-                missing_isi_mark=None,
-                crs_required=False,
-                crs_missing=False,
-                missing_crs=None,
-                any_mark_missing=False,
-                missing_mark_label=None,
-                is_fine=True,
-                verdict="Everything is fine",
-                verdict_message="No mandatory standard or hallmark required for this general item.",
-                compliance_status="FINE",
+                is_exempt_service=exempt,
+                is_fine=False,
+                verdict="Not assessed",
+                verdict_message=reason,
+                compliance_status="UNVERIFIED",
+                audit_status="NO_CONFIDENT_MATCH",
+                audit_status_reason=reason,
+                match_confidence=None,
             )
-            if self._is_exempt_service(clause_text):
-                return ItemAuditVerdict(
-                    clause_text=clause_text,
-                    recommended_is_code=None,
-                    recommended_title=None,
-                    is_code_missing=False,
-                    missing_is_code=None,
-                    detected_is_code=None,
-                    is_exempt_service=True,
-                    is_fine=True,
-                    verdict="Not Applicable",
-                    verdict_message="No mandatory Indian Standard or certification mark applies to this general service or labor item.",
-                    compliance_status="NOT_APPLICABLE",
-                )
-            else:
-                return ItemAuditVerdict(
-                    clause_text=clause_text,
-                    recommended_is_code=None,
-                    recommended_title=None,
-                    is_code_missing=True,
-                    missing_is_code="Unknown / Unmatched Standard",
-                    detected_is_code=None,
-                    is_fine=False,
-                    verdict="Unverified: Manual Review Required",
-                    verdict_message="Unable to determine applicable Indian Standard with high confidence. Specification requires manual verification.",
-                    compliance_status="UNVERIFIED",
-                )
 
         top_std = recommended_standards[0]
         # Handle dict or RecommendedStandard object
@@ -402,7 +396,45 @@ class TenderComplianceAuditor:
 
         primary_qco = qco_rules[0] if qco_rules else None
 
+        # 5. Four-state audit status. Reuses the retrieval confidence band produced by
+        # get_confidence_band() — no second threshold is introduced here.
+        match_confidence = _top_confidence(top_std)
+        if any_mark_missing:
+            # QCO_REQUIRED is checked before the confidence gate on purpose. A missed mandatory
+            # certification is a false negative on a legal obligation — the most costly error this
+            # tool can make — so a statutory gap is surfaced even when the match is below HIGH.
+            # The reason line states the confidence so the officer can weigh it.
+            audit_status = "QCO_REQUIRED"
+            caveat = (
+                "" if match_confidence == "HIGH"
+                else f" Match confidence is {match_confidence or 'unranked'}, so confirm the standard applies."
+            )
+            audit_status_reason = (
+                f"{rec_code} carries a mandatory certification ({scheme_type or 'statutory QCO'}) "
+                f"that the item text does not reference. {missing_mark_label}.{caveat}"
+            )
+        elif match_confidence != "HIGH":
+            audit_status = "NO_CONFIDENT_MATCH"
+            audit_status_reason = (
+                f"Best match {rec_code} is {match_confidence or 'unranked'} confidence, not HIGH. "
+                "Not assessed — verify manually."
+            )
+        elif is_code_missing:
+            audit_status = "STANDARD_SUGGESTED"
+            audit_status_reason = (
+                f"Item text cites no IS code. {rec_code} matched at HIGH confidence — "
+                "consider citing it in the specification."
+            )
+        else:
+            audit_status = "COMPLIANT"
+            audit_status_reason = (
+                f"Cites {detected_is_code} and carries no unmet statutory certification obligation."
+            )
+
         return ItemAuditVerdict(
+            audit_status=audit_status,
+            audit_status_reason=audit_status_reason,
+            match_confidence=match_confidence,
             clause_text=clause_text,
             recommended_is_code=rec_code,
             recommended_title=rec_title,
@@ -431,15 +463,34 @@ class TenderComplianceAuditor:
             compliance_status=compliance_status,
         )
 
-    def summarize_document_audit(self, audited_items: list[dict[str, Any]]) -> dict[str, Any]:
-        """Summarizes document-level compliance status across all audited items."""
+    def summarize_document_audit(
+        self,
+        audited_items: list[dict[str, Any]],
+        items_parsed: int | None = None,
+    ) -> dict[str, Any]:
+        """Summarizes document-level compliance across all audited items.
+
+        items_parsed is how many line items the parser found in the document; it may exceed
+        len(audited_items) when the per-request audit cap truncates the list.
+        """
         total = len(audited_items)
+        parsed = total if items_parsed is None else items_parsed
+
+        def state_counts(items: list[dict[str, Any]]) -> dict[str, int]:
+            counts = {s: 0 for s in AUDIT_STATES}
+            for it in items:
+                counts[it.get("audit_status") if it.get("audit_status") in counts else "NO_CONFIDENT_MATCH"] += 1
+            return counts
+
         if total == 0:
             return {
-                "all_compliant": True,
-                "overall_verdict": "Everything is fine",
-                "summary_message": "Everything is fine: Document contains no technical specification gaps.",
+                "all_compliant": False,
+                "overall_verdict": "No line items assessed",
+                "summary_message": "No technical line items were extracted from this document.",
                 "total_items": 0,
+                "items_parsed": parsed,
+                "items_assessed": 0,
+                "audit_status_counts": {s: 0 for s in AUDIT_STATES},
                 "fine_count": 0,
                 "missing_count": 0,
                 "compliant_count": 0,
@@ -464,35 +515,37 @@ class TenderComplianceAuditor:
         missing_isi_count = sum(1 for it in audited_items if it.get("isi_mark_missing", False))
         all_compliant = (fine_count == total)
 
+        counts = state_counts(audited_items)
+        all_compliant = counts["COMPLIANT"] == total
+
+        # Summary reads off the four audit states so it always accounts for every item.
         if all_compliant:
-            overall_verdict = "Everything is fine"
+            overall_verdict = "All line items compliant"
             summary_message = (
-                "Everything is fine: All technical clauses and line items cite the required "
-                "Indian Standards and mandatory certifications/hallmarks."
-                "Indian Standards and statutory certifications/hallmarks."
+                f"All {total} assessed line item(s) cite an applicable Indian Standard at HIGH "
+                "confidence with no unmet statutory certification obligation."
             )
         else:
-            overall_verdict = "Compliance Gaps Detected"
+            overall_verdict = "Review required"
             parts = []
-            if missing_standards_count > 0:
-                parts.append(f"{missing_standards_count} item(s) missing Indian Standards")
-            if non_compliant_count > 0:
-                parts.append(f"{non_compliant_count} non-compliant item(s)")
-            if unverified_count > 0:
-                parts.append(f"{unverified_count} unverified item(s) requiring manual review")
-            if missing_hallmarks_count > 0:
-                parts.append(f"{missing_hallmarks_count} item(s) missing mandatory BIS 6-Digit HUID Hallmarking")
-            if missing_isi_count > 0:
-                parts.append(f"{missing_isi_count} item(s) missing mandatory BIS ISI Mark under QCO")
-            
-
-            summary_message = f"Found compliance gaps: {', '.join(parts)}."
+            if counts["QCO_REQUIRED"]:
+                parts.append(f"{counts['QCO_REQUIRED']} item(s) with an unmet mandatory certification")
+            if counts["STANDARD_SUGGESTED"]:
+                parts.append(f"{counts['STANDARD_SUGGESTED']} item(s) citing no IS code")
+            if counts["NO_CONFIDENT_MATCH"]:
+                parts.append(f"{counts['NO_CONFIDENT_MATCH']} item(s) not assessed (confidence below HIGH)")
+            if counts["COMPLIANT"]:
+                parts.append(f"{counts['COMPLIANT']} compliant")
+            summary_message = f"Of {total} assessed line item(s): {', '.join(parts)}."
 
         return {
             "all_compliant": all_compliant,
             "overall_verdict": overall_verdict,
             "summary_message": summary_message,
             "total_items": total,
+            "items_parsed": parsed,
+            "items_assessed": total,
+            "audit_status_counts": counts,
             "fine_count": fine_count,
             "missing_count": missing_count,
             "compliant_count": compliant_count,

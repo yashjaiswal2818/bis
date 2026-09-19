@@ -507,6 +507,20 @@ CERTIFICATION_LABELS: dict[str, dict[str, str]] = {
 }
 
 
+# Only the 12 standards in CURATED_LOCALIZED_STANDARDS have a real translated title.
+# Every other title renders in English, so it is labelled as such rather than being
+# dressed in a regional-language wrapper that implies a translation happened.
+UNTRANSLATED_TITLE_NOTE: dict[str, str] = {
+    "mr": "(शीर्षक भाषांतर उपलब्ध नाही — मूळ इंग्रजी)",
+    "hi": "(शीर्षक अनुवाद उपलब्ध नहीं — मूल अंग्रेज़ी)",
+    "ta": "(தலைப்பு மொழிபெயர்ப்பு இல்லை — மூல ஆங்கிலம்)",
+    "te": "(శీర్షిక అనువాదం అందుబాటులో లేదు — మూల ఆంగ్లం)",
+    "bn": "(শিরোনামের অনুবাদ নেই — মূল ইংরেজি)",
+    "gu": "(શીર્ષક અનુવાદ ઉપલબ્ધ નથી — મૂળ અંગ્રેજી)",
+    "kn": "(ಶೀರ್ಷಿಕೆ ಅನುವಾದ ಲಭ್ಯವಿಲ್ಲ — ಮೂಲ ಇಂಗ್ಲಿಷ್)",
+}
+
+
 def normalize_code_key(code: str) -> str:
     """Canonical key without spaces, year, or part numbers."""
     cleaned = re.sub(r":\s*\d{4}.*$", "", str(code))
@@ -549,36 +563,31 @@ def generate_localized_hit(
     else:
         # High quality fallback template generator
         scope_snippet = (scope[:180].strip() + "...") if len(scope) > 180 else (scope or title)
+        # No curated translation for this code: show the official English title, marked.
+        note = UNTRANSLATED_TITLE_NOTE.get(language, "(title translation unavailable — original English)")
+        loc_title = f"{is_code} | {title} {note}"
         if language == "mr":
-            loc_title = f"{is_code} | भारतीय मानक तपशील: {title}"
             loc_scope = f"कार्यक्षेत्र: {scope_snippet}"
             loc_rationale = f"तुमच्या गरजेनुसार {is_code} लागू होते. सरकारी कामांसाठी {cert_label} अनिवार्य आहे. (सुसंगतता: {confidence})."
         elif language == "hi":
-            loc_title = f"{is_code} | भारतीय मानक विनिर्देश: {title}"
             loc_scope = f"कार्यक्षेत्र: {scope_snippet}"
             loc_rationale = f"यह मानक आपकी आवश्यकता से सुसंगत है। सार्वजनिक खरीद के लिए {cert_label} आवश्यक है। (विश्वसनीयता: {confidence})।"
         elif language == "ta":
-            loc_title = f"{is_code} | இந்திய தரநிலை விவரக்குறிப்பு: {title}"
             loc_scope = f"பயன்பாட்டு வரம்பு: {scope_snippet}"
             loc_rationale = f"தேவைக்கு ஏற்ப {is_code} பொருந்துகிறது. அரசு கொள்முதலில் {cert_label} சரிபார்க்கப்பட வேண்டும். (பொருத்தம்: {confidence})."
         elif language == "te":
-            loc_title = f"{is_code} | భారతీయ ప్రమాణ వివరణ: {title}"
             loc_scope = f"పరిధి: {scope_snippet}"
             loc_rationale = f"మీ అవసరానికి అనుగుణంగా {is_code} వర్తిస్తుంది. ప్రభుత్వ కొనుగోళ్లకు {cert_label} తప్పనిసరి. (అనుకూలత: {confidence})."
         elif language == "bn":
-            loc_title = f"{is_code} | ভারতীয় মানক স্পেসিফিকেশন: {title}"
             loc_scope = f"আওতা: {scope_snippet}"
             loc_rationale = f"আপনার স্পেসিফিকেশন অনুযায়ী {is_code} প্রযোজ্য। সরকারি ক্রয়ের জন্য {cert_label} প্রয়োজন। (উপযুক্ততা: {confidence})।"
         elif language == "gu":
-            loc_title = f"{is_code} | ભારતીય માનક વિશિષ્ટીકરણ: {title}"
             loc_scope = f"કાર્યક્ષેત્ર: {scope_snippet}"
             loc_rationale = f"તમારી જરૂરિયાત મુજબ {is_code} લાગુ પડે છે. સરકારી પ્રાપ્તિ માટે {cert_label} જરૂરી છે. (સુસંગતતા: {confidence})."
         elif language == "kn":
-            loc_title = f"{is_code} | ಭಾರತೀಯ ಮಾನದಂಡ ವಿವರಣೆ: {title}"
             loc_scope = f"ವ್ಯಾಪ್ತಿ: {scope_snippet}"
             loc_rationale = f"ನಿಮ್ಮ ಅವಶ್ಯಕತೆಗೆ ಅನುಗುಣವಾಗಿ {is_code} ಅನ್ವಯಿಸುತ್ತದೆ. ಸಾರ್ವಜನಿಕ ಖರೀದಿಗೆ {cert_label} ಕಡ್ಡಾಯವಾಗಿದೆ. (ಹೊಂದಾಣಿಕೆ: {confidence})."
         else:
-            loc_title = f"{is_code} | {title}"
             loc_scope = scope_snippet
             loc_rationale = f"Matches requirement. Standard covers: {scope_snippet}"
 

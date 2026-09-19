@@ -92,11 +92,7 @@ export default function StandardDetailsModal({ isOpen, onClose, standard, onOpen
                 SUPERSEDED {standard.superseded_by ? `(by ${standard.superseded_by})` : ''}
               </span>
             )}
-            {standard.amendments_count > 0 && (
-              <span className="badge badge-blue">
-                {standard.amendments_count} Amendments Included
-              </span>
-            )}
+            {/* No verified amendment source exists in the registry snapshot; never show a count. */}
           </div>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close standard details">
             <X size={18} />
@@ -180,11 +176,7 @@ export default function StandardDetailsModal({ isOpen, onClose, standard, onOpen
                   {standard.reaffirmation_year && (
                     <span className="badge badge-blue">Reaffirmed Year: {standard.reaffirmation_year}</span>
                   )}
-                  {standard.amendments_count > 0 ? (
-                    <span className="badge badge-blue">{standard.amendments_count} Published Amendments</span>
-                  ) : (
-                    <span className="badge badge-neutral">No Amendments Required</span>
-                  )}
+                  <span className="badge badge-neutral">Amendment status not recorded</span>
                 </div>
               </div>
 

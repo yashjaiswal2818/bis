@@ -73,18 +73,11 @@ def get_confidence_band(score: float) -> str:
     return "LOW"
 
 
-MATERIAL_SPECIFICITY_REGISTRY: dict[str, tuple[list[str], list[str], float, float]] = {
-    "slag_cement": (["slag", "455"], ["ordinary"], 0.35, 0.25),
-    "supersulphated": (["supersulphated", "6909"], [], 0.35, 0.0),
-    "white_cement": (["white", "8042"], [], 0.35, 0.0),
-    "deformed_bars": (["deformed", "1786"], ["general structural"], 0.35, 0.20),
-    "asbestos_sheets": (["asbestos", "459"], [], 0.35, 0.0),
-    "concrete_pipes": (["pipe", "458"], [], 0.35, 0.0),
-    "concrete_blocks": (["block", "2185"], [], 0.35, 0.0),
-    "aggregates": (["aggregate", "383"], [], 0.35, 0.0),
-    "drinking_water": (["drinking water", "10500"], [], 0.35, 0.0),
-    "earthing": (["earthing", "3043"], ["storage tanks", "petroleum", "cylindrical"], 0.45, 0.35),
-}
+# MATERIAL_SPECIFICITY_REGISTRY was removed deliberately. It hard-coded ten IS numbers
+# keyed on phrases lifted verbatim from the repo's own test sets, and an ablation over
+# 25 benchmark + 30 fresh queries showed it bought zero accuracy (benchmark 25/25 either
+# way, fresh queries 11/15 and 7/15 either way) while pushing one wrong answer to the
+# 0.999 clamp with a HIGH badge (a wrong answer carrying the strongest confidence signal).
 
 
 def compute_precision_alignment(
@@ -122,16 +115,9 @@ def compute_precision_alignment(
         elif doc_parts:
             score -= 0.25
 
-    # 3. Material Specificity Guard (prevents ordinary cement from displacing slag/calcined clay/supersulphated)
+    # 3. Multi-part PPC cement disambiguation (IS 1489 Part 1 vs Part 2)
     materials = detected_materials if detected_materials is not None else AdaptiveQueryPreprocessor.detect_materials(query)
     if materials:
-        for mat, (pos_terms, neg_terms, pos_boost, neg_pen) in MATERIAL_SPECIFICITY_REGISTRY.items():
-            if mat in materials:
-                if any(pt in doc_text or pt in is_code.lower() for pt in pos_terms):
-                    score += pos_boost
-                elif any(nt in doc_text for nt in neg_terms):
-                    score -= neg_pen
-
         # Specialized multi-part PPC cement disambiguation
         if "calcined_clay" in materials:
             if "calcined clay" in doc_text or ("1489" in is_code and "part 2" in doc_text):

@@ -43,7 +43,15 @@ class AlliedStandardsClassifier:
                 (is_code,),
             ).fetchall()
 
+            # allied_standards_edges holds 2,404 rows but only 628 distinct (source, target)
+            # pairs, so the same code would otherwise be listed several times in a tender
+            # clause. Dedupe on target at query time, keeping the first (highest-ranked) row.
+            seen_targets: set[str] = set()
             for r in rows:
+                target = str(r["target_is_code"])
+                if target in seen_targets:
+                    continue
+                seen_targets.add(target)
                 item: dict[str, Any] = {
                     "is_code": str(r["target_is_code"]),
                     "title": str(r["title"] or "Indian Standard Specification"),

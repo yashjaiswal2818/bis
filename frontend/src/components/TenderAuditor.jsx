@@ -2,6 +2,36 @@ import React, { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, FileText, Download, CheckCircle, AlertTriangle, Loader2, Info, ArrowUpRight } from 'lucide-react';
 import { auditTenderFile } from '../api/client';
 
+// Four states, one per parsed line item. NO_CONFIDENT_MATCH is the default: an item the
+// engine could not assess is not an item that passed.
+const AUDIT_STATE_ORDER = ['COMPLIANT', 'QCO_REQUIRED', 'STANDARD_SUGGESTED', 'NO_CONFIDENT_MATCH'];
+
+const AUDIT_STATE_META = {
+  COMPLIANT: {
+    label: 'Compliant',
+    tone: 'green',
+    hint: 'Matched at HIGH confidence, no unmet certification',
+  },
+  QCO_REQUIRED: {
+    label: 'QCO required',
+    tone: 'amber',
+    hint: 'Mandatory ISI / CRS / Hallmark not referenced',
+  },
+  STANDARD_SUGGESTED: {
+    label: 'Standard suggested',
+    tone: 'blue',
+    hint: 'No IS code in the item text; one matched at HIGH',
+  },
+  NO_CONFIDENT_MATCH: {
+    label: 'Not assessed',
+    tone: 'grey',
+    hint: 'Confidence below HIGH, or no match found',
+  },
+};
+
+const normalizeAuditState = (state) =>
+  AUDIT_STATE_ORDER.includes(state) ? state : 'NO_CONFIDENT_MATCH';
+
 export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isAuditing, setIsAuditing] = useState(false);
@@ -61,10 +91,10 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
       const unit = item.unit || 'N/A';
       const codes = (item.recommended_standards || []).map((r) => `${r.is_code} (${r.title})`).join('; ').replace(/"/g, '""');
       const cv = item.compliance_verdict || {};
-      const status = cv.is_fine ? 'COMPLIANT' : 'NON_COMPLIANT';
+      const status = normalizeAuditState(cv.audit_status);
       const missingCode = (cv.missing_is_code || 'None').replace(/"/g, '""');
       const missingMark = (cv.missing_mark_label || 'None').replace(/"/g, '""');
-      const verdict = (cv.verdict || (cv.is_fine ? 'Everything is fine' : 'Action Required')).replace(/"/g, '""');
+      const verdict = (cv.audit_status_reason || cv.verdict || 'Not assessed').replace(/"/g, '""');
 
       csvContent += `"${desc}","${qty}","${unit}","${codes}","${status}","${missingCode}","${missingMark}","${verdict}"\n`;
     });
@@ -160,7 +190,11 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
                 Audit Results: {currentFileName}
               </h3>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Document Format: {auditResult.type?.toUpperCase()} | Extracted Scope Items: {items.length}
+                Document Format: {auditResult.type?.toUpperCase()} | Line items assessed:{' '}
+                {auditResult.items_assessed ?? items.length}
+                {auditResult.items_parsed > (auditResult.items_assessed ?? items.length)
+                  ? ` of ${auditResult.items_parsed} parsed`
+                  : ''}
               </span>
             </div>
 
@@ -184,32 +218,70 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
             </div>
           )}
 
+          {/* Every parsed line item is counted here, including the ones with nothing wrong. */}
+          <div className="audit-summary-strip">
+            {AUDIT_STATE_ORDER.map((state) => {
+              const meta = AUDIT_STATE_META[state];
+              const count = auditResult.audit_status_counts?.[state] ?? 0;
+              return (
+                <div key={state} className={`audit-summary-cell audit-state-${meta.tone}`}>
+                  <span className="audit-summary-count">{count}</span>
+                  <span className="audit-summary-label">{meta.label}</span>
+                  <span className="audit-summary-hint">{meta.hint}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {auditResult.audit_truncated && (
+            <div className="audit-cap-notice">
+              <AlertTriangle size={15} />
+              <span>
+                Showing first <strong>{auditResult.items_assessed}</strong> of{' '}
+                <strong>{auditResult.items_parsed}</strong> parsed line items. Each item runs a full
+                hybrid search, so the audit is capped at {auditResult.audit_cap} per upload.
+              </span>
+            </div>
+          )}
+
           <div className="table-wrapper">
             <table className="officer-table">
               <thead>
                 <tr>
                   <th style={{ width: '4%' }}>#</th>
-                  <th style={{ width: '38%' }}>Tender Item / Specification Clause</th>
-                  <th style={{ width: '10%' }}>Quantity</th>
-                  <th style={{ width: '36%' }}>Recommended Indian Standards</th>
-                  <th style={{ width: '12%' }}>Actions</th>
+                  <th style={{ width: '32%' }}>Tender Item / Specification Clause</th>
+                  <th style={{ width: '14%' }}>Status</th>
+                  <th style={{ width: '8%' }}>Quantity</th>
+                  <th style={{ width: '32%' }}>Recommended Indian Standards</th>
+                  <th style={{ width: '10%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
                       No technical line items identified in this document.
                     </td>
                   </tr>
                 ) : (
-                  items.map((item, idx) => (
+                  items.map((item, idx) => {
+                    const state = normalizeAuditState(item.compliance_verdict?.audit_status);
+                    const meta = AUDIT_STATE_META[state];
+                    return (
                     <tr key={idx}>
                       <td style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{idx + 1}</td>
                       <td>
                         <div style={{ fontWeight: 600, color: 'var(--primary-navy)', marginBottom: '0.2rem', lineHeight: 1.45 }}>
                           {item.item_description || item.clause_text}
                         </div>
+                      </td>
+                      <td>
+                        <span
+                          className={`audit-chip audit-state-${meta.tone}`}
+                          title={item.compliance_verdict?.audit_status_reason || meta.hint}
+                        >
+                          {meta.label}
+                        </span>
                       </td>
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                         {item.quantity ? `${item.quantity} ${item.unit || ''}` : 'Clause'}
@@ -257,25 +329,30 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
                         )}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Bottom Audit Section: Missing Indian Standards & Hallmarks */}
+          {/* Bottom Audit Section: QCO_REQUIRED items only. Everything else is in the table. */}
           {items.length > 0 && (() => {
-            const missingISItems = items
-              .map((item, idx) => ({
-                index: idx + 1,
+            const qcoItems = items
+              .map((item, idx) => ({ item, index: idx + 1 }))
+              .filter(({ item }) => normalizeAuditState(item.compliance_verdict?.audit_status) === 'QCO_REQUIRED');
+
+            const missingISItems = qcoItems
+              .map(({ item, index }) => ({
+                index,
                 desc: item.item_description || item.clause_text,
                 missing_is_code: item.compliance_verdict?.missing_is_code,
                 is_missing: Boolean(item.compliance_verdict?.is_code_missing),
               }))
               .filter((it) => it.is_missing && it.missing_is_code);
 
-            const missingMarkItems = items
-              .map((item, idx) => {
+            const missingMarkItems = qcoItems
+              .map(({ item, index }) => {
                 const cv = item.compliance_verdict;
                 let mark = null;
                 if (cv?.hallmark_missing) {
@@ -286,7 +363,7 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
                   mark = cv.missing_crs || 'Mandatory BIS CRS Registration (Scheme-II)';
                 }
                 return {
-                  index: idx + 1,
+                  index,
                   desc: item.item_description || item.clause_text,
                   missing_mark: mark,
                   is_missing: Boolean(mark),
@@ -294,9 +371,7 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
               })
               .filter((it) => it.is_missing);
 
-            const isEverythingFine =
-              auditResult?.all_compliant ||
-              (missingISItems.length === 0 && missingMarkItems.length === 0);
+            const isEverythingFine = qcoItems.length === 0;
 
             return (
               <div className="audit-bottom-container">
@@ -305,10 +380,12 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
                     <CheckCircle size={32} style={{ color: '#059669', flexShrink: 0 }} />
                     <div>
                       <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#065f46', margin: '0 0 0.25rem 0' }}>
-                        Everything is fine
+                        No unmet certification obligations
                       </h4>
                       <p style={{ margin: 0, fontSize: '0.88rem', color: '#047857', lineHeight: 1.45 }}>
-                        Everything is fine: All technical specifications cite the required Indian Standards and mandatory certifications/hallmarks. No missing standards or hallmarks detected.
+                        No assessed line item carries a mandatory ISI, CRS or Hallmark requirement that
+                        the tender text fails to reference. Per-item status for every row is in the table above —
+                        items marked <strong>Not assessed</strong> were not checked and still need manual review.
                       </p>
                     </div>
                   </div>

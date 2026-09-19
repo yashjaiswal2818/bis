@@ -4,17 +4,11 @@ import { ShieldCheck, Activity, Building2, CheckCircle2, AlertCircle } from 'luc
 export default function Header({ isOnline, latency }) {
   return (
     <>
-      {/* Official Government Procurement Top Strip */}
+      {/* Slim institutional identifier */}
       <div className="gov-topbar">
         <div className="gov-topbar-inner">
-          <div className="gov-topbar-left">
-            <span>🇮🇳 Government of India • Ministry of Consumer Affairs, Food & Public Distribution</span>
-          </div>
-          <div className="gov-topbar-right">
-            <span>General Financial Rules (GFR) Rule 144 Compliant</span>
-            <span>•</span>
-            <span>Bureau of Indian Standards Act, 2016</span>
-          </div>
+          <span>Government of India · Ministry of Consumer Affairs, Food &amp; Public Distribution</span>
+          <span className="gov-topbar-right">BIS Act, 2016 · GFR Rule 144</span>
         </div>
       </div>
 
@@ -28,10 +22,9 @@ export default function Header({ isOnline, latency }) {
             <div className="brand-title-wrap">
               <div className="brand-title">
                 <span>Indian Standards Recommendation Platform</span>
-                <span className="brand-tag">Procurement Intelligence</span>
               </div>
               <div className="brand-subtitle">
-                Official AI-Powered Standards Identification, QCO Verification & GeM Clause Generator
+                Standards identification, QCO verification and GeM clause drafting
               </div>
             </div>
           </div>

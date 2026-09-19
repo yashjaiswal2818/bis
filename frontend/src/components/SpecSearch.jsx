@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Sparkles, AlertCircle, Info, FileQuestion, HelpCircle, History, ArrowRight, CheckCircle2, ChevronRight, X } from 'lucide-react';
+import { Search, AlertCircle, Info, FileQuestion, HelpCircle, History, ArrowRight, CheckCircle2, ChevronRight, X } from 'lucide-react';
+import { getRegistryStats } from '../api/client';
 import StandardCard from './StandardCard';
 import LoadingSteps from './LoadingSteps';
 
@@ -51,6 +52,8 @@ export default function SpecSearch({
 }) {
   const [query, setQuery] = useState('');
   const [inputMode, setInputMode] = useState('product'); // 'product' | 'spec'
+  const [stats, setStats] = useState(null);
+  const [statsFailed, setStatsFailed] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [activeComponentFilter, setActiveComponentFilter] = useState('ALL');
@@ -118,6 +121,14 @@ export default function SpecSearch({
       handleSubmit();
     }
   };
+
+  useEffect(() => {
+    let alive = true;
+    getRegistryStats()
+      .then((d) => { if (alive) setStats(d); })
+      .catch(() => { if (alive) setStatsFailed(true); });
+    return () => { alive = false; };
+  }, []);
 
   const handleSelectChip = (q) => {
     setQuery(q);
@@ -194,29 +205,8 @@ export default function SpecSearch({
 
   return (
     <div className="spec-search-container">
-      {/* Clean Hero Header */}
-      <section className="hero-section">
-        <div className="hero-pill">
-          <Sparkles size={12} color="#d97706" />
-          <span>Bureau of Indian Standards • National Procurement Directory</span>
-        </div>
-        <h1 className="hero-title">Find the Right Indian Standards</h1>
-        <p className="hero-subtitle">
-          Search by product, material, specification, or upload a tender document.
-        </p>
-      </section>
-
-      {/* Main Search Console */}
+      {/* Search instrument: mode strip, input, and actions read as one unit. */}
       <div className="search-card">
-        <div className="search-header-row">
-          <label htmlFor="tender-query" className="search-input-label">
-            <Search size={16} color="#1e5bb8" />
-            <span>Search Indian Standards</span>
-          </label>
-          <span className="search-hint">हिन्दी • Hinglish • English</span>
-        </div>
-
-        {/* Input Mode Selector (Feature 1: Product descriptions vs Technical specifications vs Multilingual vs Natural Language vs Tender documents) */}
         <div className="input-mode-tabs">
           <div className="input-mode-group" aria-label="Search input mode">
           <button
@@ -256,16 +246,18 @@ export default function SpecSearch({
             <span>Natural Language Query</span>
           </button>
           </div>
-          <button
-            type="button"
-            className="tender-switch-link"
-            onClick={onSwitchToTender}
-            title="Upload Tender PDF, CSV, or BoQ schedule for automatic clause audit"
-          >
-            <span>📂</span>
-            <span>Tender document</span>
-            <ArrowRight size={13} />
-          </button>
+          <div className="search-strip-right">
+            <span className="lang-indicator" title="English, हिन्दी and Hinglish queries supported">EN · हिन्दी</span>
+            <button
+              type="button"
+              className="tender-switch-link"
+              onClick={onSwitchToTender}
+              title="Upload Tender PDF, CSV, or BoQ schedule for automatic clause audit"
+            >
+              <span>Tender document</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="search-box-container">
@@ -275,12 +267,12 @@ export default function SpecSearch({
               className="search-textarea"
               placeholder={
                 inputMode === 'product'
-                  ? "Enter product name or commodity description (e.g., 'PVC insulated electric cables for working voltages up to 1100 V')..."
+                  ? "Search for a product, material, or specification..."
                   : inputMode === 'spec'
-                  ? "Paste technical specification clause, bill of quantities (BoQ) item, or engineering parameters (e.g., 'Reinforced cement concrete structural building construction M25 grade with nominal aggregate 20mm, slump 100mm, machine vibrated')..."
+                  ? "Paste a specification clause or BoQ line item..."
                   : inputMode === 'multilingual'
-                  ? "अपनी भाषा में खोजें (जैसे 'पीवीसी इंसुलेटेड बिजली के तार 1100 वोल्ट', '22 कैरेट सोने के आभूषण हॉलमार्किंग', या 'bijli ke taar 1100V building wiring')..."
-                  : "Ask any conversational question (e.g., 'Which BIS standard should we follow for fire safety in school and hospital buildings?' or 'What are the official test methods for drinking water parameters?')..."
+                  ? "अपनी भाषा में खोजें — हिन्दी या Hinglish..."
+                  : "Ask a question about standards, testing, or compliance..."
               }
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -344,9 +336,11 @@ export default function SpecSearch({
           </div>
         )}
 
-        {/* Example Query Chips based on Selected Mode */}
-        <div className="example-chips-section">
-          <span className="example-chips-label">Try:</span>
+      </div>
+
+      {/* Secondary: one-click starting points, deliberately quiet. */}
+      <div className="example-chips-section">
+          <span className="example-chips-label">Try</span>
           <div className="chips-wrap">
             {(inputMode === 'product'
               ? PRODUCT_CHIPS
@@ -367,8 +361,105 @@ export default function SpecSearch({
               </button>
             ))}
           </div>
-        </div>
       </div>
+
+      {/* Registry console: live counts from standards_master.db, at-rest only. */}
+      {!isSearching && !searchResults && !statsFailed && (
+        <div className="registry-console">
+          <div className="registry-strip">
+            {stats ? (
+              <>
+                <div className="stat-block">
+                  <div className="stat-value">{stats.total_standards.toLocaleString('en-IN')}</div>
+                  <div className="stat-label">Standards indexed</div>
+                </div>
+                <div className="stat-block">
+                  <div className="stat-value">{stats.qco_notified_count.toLocaleString('en-IN')}</div>
+                  <div className="stat-label">QCO-notified products</div>
+                </div>
+                <div className="stat-block">
+                  <div className="stat-value">{stats.scheme_count}</div>
+                  <div className="stat-label">Certification schemes</div>
+                </div>
+              </>
+            ) : (
+              [0, 1, 2].map((i) => (
+                <div className="stat-block" key={i}>
+                  <div className="skeleton skeleton-value" />
+                  <div className="skeleton skeleton-label" />
+                </div>
+              ))
+            )}
+          </div>
+
+          {stats && (
+            <p className="provenance-line">
+              {stats.data_provenance?.snapshot_date
+                ? `Registry snapshot: ${stats.data_provenance.source}, ${stats.data_provenance.snapshot_date}`
+                : `Registry snapshot: ${stats.data_provenance?.source || 'source not recorded'} \u00b7 snapshot date: not recorded`}
+              {' \u00b7 '}Editions not continuously synced with BIS
+            </p>
+          )}
+
+          <div className="console-grid">
+            <section className="console-panel">
+              <div className="console-panel-head">
+                <h2 className="console-panel-title">Mandatory certification watch</h2>
+                <span className="console-panel-meta">
+                  {stats ? `Sample of ${stats.qco_notified_count.toLocaleString('en-IN')} notified products` : ''}
+                </span>
+              </div>
+              {stats ? (
+                <ul className="qco-list">
+                  {stats.qco_samples.map((row) => (
+                    <li key={row.is_code}>
+                      <button
+                        type="button"
+                        className="qco-row"
+                        onClick={() => handleSelectChip(row.is_code)}
+                        title={row.order_name}
+                      >
+                        <span className="qco-code">{row.is_code}</span>
+                        <span className="qco-title">{row.title}</span>
+                        <span className={`qco-badge qco-badge-${row.scheme.toLowerCase()}`}>{row.scheme}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="qco-list">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <li key={i}><div className="skeleton skeleton-row" /></li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="console-panel">
+              <div className="console-panel-head">
+                <h2 className="console-panel-title">Registry by division</h2>
+                <span className="console-panel-meta">BIS technical divisions</span>
+              </div>
+              {stats ? (
+                <ul className="division-list">
+                  {stats.divisions.map((d) => (
+                    <li className="division-row" key={d.name}>
+                      <span className="division-name">{d.name}</span>
+                      <span className="division-count">{d.count.toLocaleString('en-IN')}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="division-list">
+                  {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    <li key={i}><div className="skeleton skeleton-row-sm" /></li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
 
       {/* Invalid Query Alert (Requirement 11) */}
       {hasInvalidInput && (
@@ -430,9 +521,8 @@ export default function SpecSearch({
               <span className="badge badge-neutral">
                 Search Latency: {searchResults.latency_seconds}s
               </span>
-              <span className="badge badge-emerald">
-                <CheckCircle2 size={12} />
-                <span>Verified 33k+ BIS Whitelist Guard</span>
+              <span className="badge badge-neutral">
+                <span>Registry whitelist · hallucination guard active</span>
               </span>
             </div>
           </div>
@@ -611,6 +701,11 @@ export default function SpecSearch({
               )}
             </>
           )}
+
+          <p className="edition-disclosure">
+            Edition as recorded in registry snapshot. Verify current edition at
+            {' '}standardsbis.bsbedge.com{' '}before use in tender documents.
+          </p>
         </section>
       )}
     </div>

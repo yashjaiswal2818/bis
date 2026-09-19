@@ -108,28 +108,22 @@ export default function StandardCard({ hit, onOpenGeMClause, onViewDetails, disp
 
           {isActive ? (
             <span
-              className="badge badge-emerald"
-              title={`Current active Indian Standard${hit.reaffirmation_year ? ` (Reaffirmed ${hit.reaffirmation_year})` : ''}`}
+              className="badge badge-neutral"
+              title={`Present in the registry snapshot. Edition currency not verified against BIS.${hit.reaffirmation_year ? ` Reaffirmation year recorded: ${hit.reaffirmation_year}.` : ''}`}
             >
-              <CheckCircle2 size={12} />
-              <span>ACTIVE {hit.reaffirmation_year ? `(${hit.reaffirmation_year})` : ''}</span>
+              <span>In registry</span>
             </span>
           ) : (
-            <span className="badge badge-amber" title="Superseded version - Check updated standard">
+            <span className="badge badge-amber" title="Recorded as superseded in the registry snapshot">
               <AlertTriangle size={12} />
-              <span>SUPERSEDED {hit.superseded_by ? `(by ${hit.superseded_by})` : ''}</span>
+              <span>Superseded {hit.superseded_by ? `(by ${hit.superseded_by})` : ''}</span>
             </span>
           )}
 
-          {hit.amendments_count > 0 ? (
-            <span className="badge badge-blue" title={`${hit.amendments_count} gazetted technical amendment(s)`}>
-              <span>{hit.amendments_count} Amendments</span>
-            </span>
-          ) : (
-            <span className="badge badge-neutral" title="Current base edition without pending amendments">
-              <span>Latest Edition</span>
-            </span>
-          )}
+          {/* Amendment counts are not sourced from any BIS amendment document; never show a number. */}
+          <span className="badge badge-neutral" title="The registry snapshot carries no verified amendment source. Check the BIS portal for gazetted amendments.">
+            <span>Amendment status not recorded</span>
+          </span>
         </div>
       </div>
 
