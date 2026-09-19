@@ -37,8 +37,16 @@ class GroundedRationaleEngine:
             ministry = qco_rules[0].get("issuing_ministry", "Line Ministry")
             qco_text = f" Under {order} issued by {ministry}, compliance is legally mandatory for all public procurement."
 
+        # Lead-in must match the confidence band so the text does not overstate a weak match
+        if confidence == "HIGH":
+            lead_in = f"Directly addresses query requirements. {is_code} ({title}) covers:"
+        elif confidence == "MEDIUM":
+            lead_in = f"Partial semantic match. {is_code} ({title}) may be related to:"
+        else:
+            lead_in = f"Weak match. {is_code} ({title}) has limited relevance:"
+
         rationale = (
-            f"Directly addresses query requirements. {is_code} ({title}) covers: \"{scope_snippet}\". "
+            f"{lead_in} \"{scope_snippet}\". "
             f"Retrieval confidence is {confidence}.{qco_text}"
         )
         return rationale

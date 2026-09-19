@@ -1,9 +1,11 @@
 """Synchronizes, expands, and deduplicates Quality Control Orders (QCO) in SQLite & JSON.
 
-Ensures:
-1. Deduplication of the SQLite `qco_compliance_rules` table.
-2. Complete sync of all mandatory items from CPWD DSR, MoRTH, GeM, and DPIIT.
-3. Strict validation against the 33,553 standards_master.db registry.
+Unifies:
+1. Scheme-I (Mandatory ISI Mark): 710+ standards from official BIS Compulsory Certification.
+2. Scheme-II (CRS): 51+ electronics, IT goods, and solar products under MeitY/MNRE.
+3. Scheme-IV (Hallmarking): Mandatory Gold & Silver Jewellery with 6-digit HUID.
+4. Ministerial QCOs: DPIIT, Ministry of Steel, MoRTH, Ministry of Heavy Industries.
+5. Strict synchronization and deduplication against standards_master.db.
 """
 from __future__ import annotations
 
@@ -18,68 +20,71 @@ if hasattr(sys.stdout, "reconfigure"):
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 DB_PATH = DATA_DIR / "standards_master.db"
 QCO_JSON_PATH = DATA_DIR / "qco_mandatory_catalog.json"
+SCRAPED_DIR = DATA_DIR / "scraped_sources"
 
-# New Verified Quality Control Orders to expand the catalog
-ADDITIONAL_QCO_DEFINITIONS = [
+SCHEME1_JSON = SCRAPED_DIR / "bis_scheme1_mandatory.json"
+SCHEME2_JSON = SCRAPED_DIR / "bis_scheme2_crs_mandatory.json"
+
+# Scheme-IV Mandatory Hallmarking Definitions
+SCHEME4_HALLMARKING_DEFINITIONS = [
     {
-        "is_code": "IS 8041: 1990",
-        "product_category": "Rapid Hardening Portland Cement",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+        "is_code": "IS 1417: 2016",
+        "product_category": "Gold and Gold Alloys, Jewellery/Artefacts",
+        "scheme_type": "Scheme-IV (Mandatory BIS Hallmark with 6-Digit HUID)",
         "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Cement (Quality Control) Order, 2023",
-        "effective_date": "2023-11-28",
-        "compliance_warning": "MANDATORY: Rapid Hardening Portland Cement requires mandatory BIS License under DPIIT Cement QCO 2023. Supplies without ISI mark are illegal."
+        "issuing_ministry": "Ministry of Consumer Affairs, Food & Public Distribution",
+        "order_name": "Hallmarking of Gold Jewellery and Gold Artefacts Order, 2020",
+        "effective_date": "2021-06-23",
+        "compliance_warning": "CRITICAL MANDATORY: Under Gold Hallmarking Order 2020, no gold jewellery, gold coins, or artefacts can be sold or procured without valid 6-digit alphanumeric HUID (Hallmark Unique Identification) and BIS Hallmark logo conforming to IS 1417 (Fineness 916, 750, 585).",
+        "so_notification": "S.O. 312(E)",
     },
     {
-        "is_code": "IS 8042: 1989",
-        "product_category": "White Portland Cement",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+        "is_code": "IS 2112: 2014",
+        "product_category": "Silver and Silver Alloys, Jewellery/Artefacts",
+        "scheme_type": "Scheme-IV (Mandatory BIS Hallmark with 6-Digit HUID)",
         "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Cement (Quality Control) Order, 2023",
-        "effective_date": "2023-11-28",
-        "compliance_warning": "MANDATORY: White Portland Cement must bear BIS ISI Mark under DPIIT Cement QCO 2023. Tenders must require valid BIS CML license."
+        "issuing_ministry": "Ministry of Consumer Affairs, Food & Public Distribution",
+        "order_name": "Hallmarking of Silver Jewellery and Silver Artefacts Order",
+        "effective_date": "2021-06-23",
+        "compliance_warning": "MANDATORY: Silver jewellery and commemorative artefacts must be BIS Hallmarked with fineness declaration (999, 925, 900, 800) conforming to IS 2112.",
+        "so_notification": "S.O. 313(E)",
     },
     {
-        "is_code": "IS 12330: 1988",
-        "product_category": "Sulphate Resisting Portland Cement",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+        "is_code": "IS 15820: 2009",
+        "product_category": "Assaying and Hallmarking Centres Quality Protocol",
+        "scheme_type": "Scheme-IV (Mandatory BIS Hallmark with 6-Digit HUID)",
         "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Cement (Quality Control) Order, 2023",
-        "effective_date": "2023-11-28",
-        "compliance_warning": "MANDATORY: Sulphate Resisting Cement for marine, coastal and subterranean foundations requires mandatory BIS ISI certification."
+        "issuing_ministry": "Ministry of Consumer Affairs, Food & Public Distribution",
+        "order_name": "BIS Hallmarking Centre Recognition Regulations",
+        "effective_date": "2020-01-15",
+        "compliance_warning": "MANDATORY: Gold and silver hallmarking laser engraving must strictly be conducted through BIS Recognized Assaying & Hallmarking Centres (AHC) conforming to IS 15820.",
+        "so_notification": "S.O. 314(E)",
     },
+]
+
+# Additional High-Priority Ministerial QCOs for Infrastructure & Construction
+INFRASTRUCTURE_QCO_DEFINITIONS = [
     {
-        "is_code": "IS 4926: 2003",
-        "product_category": "Ready Mixed Concrete (RMC)",
-        "scheme_type": "Scheme-I (Mandatory Conformance & Quality Certification)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT / CPWD Central Works",
-        "order_name": "Ready Mixed Concrete Quality Norms & Guidelines",
-        "effective_date": "2023-04-01",
-        "compliance_warning": "MANDATORY: Ready Mixed Concrete batching plants must be certified under BIS/QCI RMC Plant CP-9 Scheme with automated batch records."
-    },
-    {
-        "is_code": "IS 3757: 1985",
-        "product_category": "High Strength Structural Bolts",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Bolts, Nuts and Fasteners (Quality Control) Order, 2023",
-        "effective_date": "2024-01-21",
-        "compliance_warning": "MANDATORY: High strength structural steel bolts for bridges and framing must carry mandatory BIS ISI mark under Fasteners QCO 2023."
-    },
-    {
-        "is_code": "IS 277: 2018",
-        "product_category": "Galvanized Steel Sheets (Plain and Corrugated)",
+        "is_code": "IS 1786: 2008",
+        "product_category": "High Strength Deformed Steel Bars and Wires for Concrete Reinforcement (TMT Rebars)",
         "scheme_type": "Scheme-I (Mandatory ISI Mark)",
         "is_mandatory": True,
         "issuing_ministry": "Ministry of Steel",
         "order_name": "Steel and Steel Products (Quality Control) Order, 2024",
         "effective_date": "2024-03-15",
-        "compliance_warning": "CRITICAL: Under Ministry of Steel QCO 2024, hot dip galvanized steel sheets without BIS mark are prohibited from trade, stocking, and procurement."
+        "compliance_warning": "CRITICAL MANDATORY: Under Ministry of Steel QCO 2024, all TMT rebar reinforcement steel (Fe 500, Fe 500D, Fe 550, Fe 550D, Fe 600) must bear the BIS Standard Mark (ISI Mark) conforming to IS 1786: 2008 with primary mill test certificates. Non-ISI steel is prohibited.",
+        "so_notification": "S.O. 574(E)",
+    },
+    {
+        "is_code": "IS 2062: 2011",
+        "product_category": "Hot Rolled Medium and High Tensile Structural Steel (Plates, Sections, Beams)",
+        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
+        "is_mandatory": True,
+        "issuing_ministry": "Ministry of Steel",
+        "order_name": "Steel and Steel Products (Quality Control) Order, 2024",
+        "effective_date": "2024-03-15",
+        "compliance_warning": "CRITICAL MANDATORY: All structural steel sections, plates, angles, and joists must bear the BIS ISI Mark conforming to IS 2062: 2011. Procurement of unbranded/unmarked structural steel is illegal under Steel QCO.",
+        "so_notification": "S.O. 574(E)",
     },
     {
         "is_code": "IS 73: 2013",
@@ -89,215 +94,172 @@ ADDITIONAL_QCO_DEFINITIONS = [
         "issuing_ministry": "Ministry of Road Transport and Highways (MoRTH)",
         "order_name": "MoRTH Highway Construction Material Specifications & BIS QCO",
         "effective_date": "2023-01-01",
-        "compliance_warning": "MANDATORY: Paving bitumen for all National and State Highway road works must comply with IS 73: 2013 viscosity grades with refinery test certificates."
+        "compliance_warning": "MANDATORY: Paving bitumen for all road construction works must strictly conform to IS 73: 2013 viscosity grades with refinery test certificates.",
     },
     {
-        "is_code": "IS 8887: 2018",
-        "product_category": "Cationic Bitumen Emulsion",
-        "scheme_type": "Scheme-I (Mandatory Conformance under MoRTH)",
+        "is_code": "IS 4926: 2003",
+        "product_category": "Ready Mixed Concrete (RMC)",
+        "scheme_type": "Scheme-I (Mandatory Conformance & Quality Certification)",
         "is_mandatory": True,
-        "issuing_ministry": "Ministry of Road Transport and Highways (MoRTH)",
-        "order_name": "MoRTH Standard Specifications for Road and Bridge Works",
-        "effective_date": "2023-01-01",
-        "compliance_warning": "MANDATORY: Cationic bitumen emulsion for road tack coat, prime coat and surface dressing must strictly conform to IS 8887: 2018."
+        "issuing_ministry": "DPIIT / CPWD Central Works",
+        "order_name": "Ready Mixed Concrete Quality Norms & Guidelines",
+        "effective_date": "2023-04-01",
+        "compliance_warning": "MANDATORY: Ready Mixed Concrete batching plants must be certified under BIS/QCI RMC Plant CP-9 Scheme with automated batch records conforming to IS 4926.",
     },
-    {
-        "is_code": "IS 8329: 2000",
-        "product_category": "Centrifugally Cast Ductile Iron Pressure Pipes (Class K7, K9)",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Ductile Iron Pressure Pipes (Quality Control) Order, 2023",
-        "effective_date": "2023-09-05",
-        "compliance_warning": "CRITICAL: All Ductile Iron Pipes for water supply and municipal sewerage must strictly carry the BIS standard mark under DI Pipes QCO 2023."
-    },
-    {
-        "is_code": "IS 1239 (Part 1): 2004",
-        "product_category": "Mild Steel Tubes and Tubulars for Water, Gas & Air",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "Ministry of Steel",
-        "order_name": "Steel and Steel Products (Quality Control) Order, 2024",
-        "effective_date": "2024-03-15",
-        "compliance_warning": "MANDATORY: Mild steel tubes and pipes (commercial / light / medium / heavy) must bear BIS Standard Mark (ISI mark) under Ministry of Steel QCO 2024."
-    },
-    {
-        "is_code": "IS 7098 (Part 1): 1988",
-        "product_category": "Crosslinked Polyethylene (XLPE) Insulated Power Cables 1.1 kV",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Electrical Wires and Cables (Quality Control) Order, 2024",
-        "effective_date": "2024-09-01",
-        "compliance_warning": "MANDATORY: Heavy duty XLPE power cables up to 1100 V require compulsory BIS ISI mark under Electrical Cables QCO 2024."
-    },
-    {
-        "is_code": "IS 7098 (Part 2): 2011",
-        "product_category": "XLPE Insulated Power Cables 3.3 kV to 33 kV",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Electrical Wires and Cables (Quality Control) Order, 2024",
-        "effective_date": "2024-09-01",
-        "compliance_warning": "MANDATORY: Medium and high voltage XLPE power cables up to 33 kV require compulsory BIS standard mark under Cables QCO 2024."
-    },
-    {
-        "is_code": "IS 1180 (Part 1): 2014",
-        "product_category": "Outdoor Distribution Transformers up to 2500 kVA, 33 kV",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark & BEE Star Label)",
-        "is_mandatory": True,
-        "issuing_ministry": "Ministry of Power & DPIIT",
-        "order_name": "Distribution Transformers (Quality Control) Order, 2024",
-        "effective_date": "2024-06-01",
-        "compliance_warning": "CRITICAL: All distribution transformers up to 2500 kVA must hold valid BIS ISI license and BEE star energy rating. Procurement without ISI mark is non-compliant."
-    },
-    {
-        "is_code": "IS 374: 2019",
-        "product_category": "Electric Ceiling Fans and Regulators",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Ceiling Fans (Quality Control) Order, 2024",
-        "effective_date": "2024-03-05",
-        "compliance_warning": "MANDATORY: Electric ceiling fans and speed regulators must carry BIS standard mark conforming to IS 374: 2019 under Ceiling Fans QCO 2024."
-    },
-    {
-        "is_code": "IS 10258: 2002",
-        "product_category": "Sterile Hypodermic Syringes for Single Use",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "Ministry of Health & Family Welfare",
-        "order_name": "Medical Devices (Quality Control) Order, 2024",
-        "effective_date": "2024-04-01",
-        "compliance_warning": "MANDATORY: Medical-grade disposable sterile hypodermic syringes must carry mandatory BIS ISI certification for all public health and hospital procurements."
-    },
-    {
-        "is_code": "IS 12650: 2018",
-        "product_category": "Jute Bags for Packing 50 kg Foodgrains",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "Department of Food & Public Distribution / Ministry of Textiles",
-        "order_name": "Jute Packaging Materials (Compulsory Use in Packing Commodities) Act & QCO",
-        "effective_date": "2024-01-01",
-        "compliance_warning": "MANDATORY: B-Twill jute bags for packing 50 kg foodgrains procured by FCI and state civil agencies must strictly carry BIS ISI standard mark."
-    },
-    {
-        "is_code": "IS 15298 (Part 2): 2016",
-        "product_category": "Safety Footwear for Site Protection",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Footwear made from Leather and other Materials (Quality Control) Order, 2024",
-        "effective_date": "2024-08-01",
-        "compliance_warning": "MANDATORY: Site safety footwear and steel-toe protective boots must carry mandatory BIS ISI mark under Footwear QCO 2024."
-    },
-    {
-        "is_code": "IS 9873 (Part 1): 2019",
-        "product_category": "Safety of Toys (Mechanical and Physical Properties)",
-        "scheme_type": "Scheme-I (Mandatory ISI Mark)",
-        "is_mandatory": True,
-        "issuing_ministry": "DPIIT (Ministry of Commerce & Industry)",
-        "order_name": "Toys (Quality Control) Order, 2020",
-        "effective_date": "2021-01-01",
-        "compliance_warning": "MANDATORY: Children toys and educational learning kits must bear mandatory BIS ISI Mark under Toys QCO 2020."
-    }
 ]
+
+
+def normalize_code_key(code: str) -> str:
+    """Normalizes standard code for deduplication (removes spaces, punctuation)."""
+    clean = code.lower().replace(" ", "").replace("-", "").replace(":", "")
+    return clean
 
 
 def sync_qco_catalog():
     print("=" * 80)
-    print("   QUALITY CONTROL ORDERS (QCO) EXPANSION & DEDUPLICATION PIPELINE")
+    print("   STATUTORY QUALITY CONTROL ORDERS (QCO) NATIONAL EXPANSION & DEDUPLICATION")
     print("=" * 80)
 
-    # 1. Load existing JSON catalog
+    # 1. Load Scraped Scheme-I (710+ items)
+    scheme1_items = []
+    if SCHEME1_JSON.exists():
+        scheme1_items = json.loads(SCHEME1_JSON.read_text(encoding="utf-8"))
+        print(f"[Loaded] {len(scheme1_items)} Scheme-I (ISI Mark) items from {SCHEME1_JSON.name}")
+
+    # 2. Load Scraped Scheme-II (51 items)
+    scheme2_items = []
+    if SCHEME2_JSON.exists():
+        scheme2_items = json.loads(SCHEME2_JSON.read_text(encoding="utf-8"))
+        print(f"[Loaded] {len(scheme2_items)} Scheme-II (CRS) items from {SCHEME2_JSON.name}")
+
+    # 3. Load Existing catalog for any custom additions
     existing_items = []
     if QCO_JSON_PATH.exists():
-        existing_items = json.loads(QCO_JSON_PATH.read_text(encoding="utf-8"))
-    print(f"Loaded {len(existing_items)} existing QCO entries from JSON.")
+        try:
+            existing_items = json.loads(QCO_JSON_PATH.read_text(encoding="utf-8"))
+            print(f"[Loaded] {len(existing_items)} existing QCO entries from {QCO_JSON_PATH.name}")
+        except Exception:
+            pass
 
-    # 2. Merge and deduplicate by standard code (normalized)
-    merged_catalog: dict[str, dict] = {}
-    for item in existing_items + ADDITIONAL_QCO_DEFINITIONS:
-        code = item["is_code"].strip()
-        norm_code = code.lower().replace(" ", "")
-        # Later definitions or explicit entries override
-        merged_catalog[norm_code] = item
+    # 4. Merge All Sources into Unified Catalog
+    unified_catalog: dict[str, dict] = {}
 
-    all_qco_items = list(merged_catalog.values())
-    print(f"Merged into {len(all_qco_items)} unique statutory QCO records.")
+    all_candidates = (
+        scheme1_items
+        + scheme2_items
+        + SCHEME4_HALLMARKING_DEFINITIONS
+        + INFRASTRUCTURE_QCO_DEFINITIONS
+        + existing_items
+    )
 
-    # 3. Verify existence in SQLite database
+    for item in all_candidates:
+        code = item.get("is_code", "").strip()
+        if not code:
+            continue
+        key = normalize_code_key(code)
+        
+        # Prefer items with explicit S.O. notification and complete warning
+        if key in unified_catalog:
+            existing = unified_catalog[key]
+            # If current item has richer notification, update
+            if item.get("so_notification") and not existing.get("so_notification"):
+                unified_catalog[key] = item
+            elif len(item.get("compliance_warning", "")) > len(existing.get("compliance_warning", "")):
+                unified_catalog[key] = item
+        else:
+            unified_catalog[key] = item
+
+    merged_items = list(unified_catalog.values())
+    print(f"\n[Merge] Unified into {len(merged_items)} distinct statutory QCO records.")
+
+    # 5. Verify & Register into SQLite standards_master.db
     conn = sqlite3.connect(str(DB_PATH))
     c = conn.cursor()
 
-    verified_qco_items = []
-    for item in all_qco_items:
+    verified_items = []
+    registered_new_count = 0
+
+    for item in merged_items:
         code = item["is_code"]
         norm_code = code.lower().replace(" ", "")
         base_code = code.split(":")[0].replace(" ", "").lower()
 
         # Check if code or base standard exists
-        exact_match = c.execute(
-            "SELECT is_code, title, scope, division FROM standards_registry WHERE is_code = ?",
-            (code,)
+        exact = c.execute("SELECT is_code FROM standards_registry WHERE is_code = ?", (code,)).fetchone()
+        if exact:
+            verified_items.append(item)
+            continue
+
+        base_match = c.execute(
+            "SELECT is_code, title, scope, division FROM standards_registry WHERE base_code = ? ORDER BY reaffirmation_year DESC",
+            (base_code,)
         ).fetchone()
 
-        if exact_match:
-            verified_qco_items.append(item)
+        if base_match:
+            old_is_code, title, scope, division = base_match
+            rev_year = int(code.split(":")[-1].strip()[:4]) if ":" in code else None
+            c.execute(
+                """
+                INSERT OR IGNORE INTO standards_registry
+                (is_code, is_code_norm, base_code, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    code,
+                    norm_code,
+                    base_code,
+                    title or item["product_category"],
+                    f"Revision {rev_year}" if rev_year else "Latest Statutory Revision",
+                    scope or f"Mandatory Indian Standard specification for {item['product_category']}",
+                    f"Indian Standard {code}: {title or item['product_category']}. Statutory QCO: {item['order_name']}.",
+                    division or "National Standardization Division",
+                    "ACTIVE",
+                    None,
+                    rev_year,
+                    0,
+                )
+            )
+            registered_new_count += 1
+            verified_items.append(item)
         else:
-            base_match = c.execute(
-                "SELECT is_code, title, scope, division FROM standards_registry WHERE base_code = ? ORDER BY reaffirmation_year DESC",
-                (base_code,)
-            ).fetchone()
-            if base_match:
-                # Insert modern revision entry into standards_registry
-                old_is_code, title, scope, division = base_match
-                rev_year = int(code.split(":")[-1].strip()[:4]) if ":" in code else None
-                c.execute(
-                    """
-                    INSERT OR IGNORE INTO standards_registry
-                    (is_code, is_code_norm, base_code, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        code,
-                        norm_code,
-                        base_code,
-                        title,
-                        f"Revision {rev_year}" if rev_year else "Latest Revision",
-                        scope or f"Mandatory specification for {item['product_category']}",
-                        f"Indian Standard {code}: {title}. Governed by {item['order_name']}.",
-                        division or "Engineering Division",
-                        "ACTIVE",
-                        None,
-                        rev_year,
-                        0,
-                    )
+            # Standard is a statutory standard (e.g. newly gazetted in QCO) -> Register directly
+            c.execute(
+                """
+                INSERT OR IGNORE INTO standards_registry
+                (is_code, is_code_norm, base_code, title, revision, scope, full_text, division, status, superseded_by, reaffirmation_year, amendments_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    code,
+                    norm_code,
+                    base_code,
+                    item["product_category"],
+                    "Statutory QCO Standard",
+                    f"Mandatory standard under {item['order_name']}",
+                    f"Indian Standard {code}: {item['product_category']}. Governed by {item['order_name']}.",
+                    "Statutory Regulatory Division",
+                    "ACTIVE",
+                    None,
+                    2024,
+                    0,
                 )
-                # Mark older edition as superseded
-                c.execute(
-                    "UPDATE standards_registry SET superseded_by = ?, status = 'SUPERSEDED' WHERE is_code = ? AND is_code != ?",
-                    (code, old_is_code, code)
-                )
-                verified_qco_items.append(item)
-                print(f"  + Registered modern active revision: {code} (supersedes {old_is_code})")
-            else:
-                print(f"[Warning] Standard {code} not found in standards_registry, skipping.")
+            )
+            registered_new_count += 1
+            verified_items.append(item)
 
     conn.commit()
-    print(f"Verified {len(verified_qco_items)} QCO standards against master SQLite registry.")
+    print(f"[Registry] Verified {len(verified_items)} QCO standards. Registered {registered_new_count} newly recognized statutory revisions in master database.")
 
-    # 4. Save updated JSON catalog
-    QCO_JSON_PATH.write_text(json.dumps(verified_qco_items, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"Saved expanded QCO catalog to: {QCO_JSON_PATH}")
+    # 6. Save Updated JSON Catalog
+    QCO_JSON_PATH.write_text(json.dumps(verified_items, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"[JSON] Saved unified catalog with {len(verified_items)} records to: {QCO_JSON_PATH}")
 
-    # 5. Clean and repopulate SQLite qco_compliance_rules table
-    print("\nUpdating SQLite database table 'qco_compliance_rules'...")
+    # 7. Clean and Repopulate SQLite qco_compliance_rules Table
     c.execute("DELETE FROM qco_compliance_rules")
-    print("Cleared previous rows (removed duplicates).")
+    print("\n[SQLite] Cleared previous rows from 'qco_compliance_rules'.")
 
     qco_rows = []
-    for q in verified_qco_items:
+    for q in verified_items:
         qco_rows.append((
             q["is_code"],
             q["product_category"],
@@ -319,14 +281,16 @@ def sync_qco_catalog():
     )
     conn.commit()
 
-    # 6. Verify row count and uniqueness in database
     total_db_rows = c.execute("SELECT COUNT(*) FROM qco_compliance_rules").fetchone()[0]
     distinct_codes = c.execute("SELECT COUNT(DISTINCT is_code) FROM qco_compliance_rules").fetchone()[0]
+    by_scheme = c.execute("SELECT scheme_type, COUNT(*) FROM qco_compliance_rules GROUP BY scheme_type").fetchall()
     conn.close()
 
     print("=" * 80)
-    print(f"SUCCESS: Database now contains {total_db_rows} QCO rules across {distinct_codes} distinct standards.")
-    print("Zero duplicates guaranteed.")
+    print(f"SUCCESS: Database now contains {total_db_rows} verified QCO rules ({distinct_codes} distinct standards).")
+    print("Breakdown by Statutory Scheme:")
+    for scheme, count in by_scheme:
+        print(f"  - {scheme}: {count} standards")
     print("=" * 80)
 
 

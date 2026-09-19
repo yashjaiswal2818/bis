@@ -66,9 +66,9 @@ class RecommendedStandard:
 
 def get_confidence_band(score: float) -> str:
     """Calibrated confidence bands based on benchmark testing."""
-    if score >= 0.55:
+    if score >= 0.75:
         return "HIGH"
-    elif score >= 0.40:
+    elif score >= 0.50:
         return "MEDIUM"
     return "LOW"
 

@@ -197,36 +197,13 @@ export default function SpecSearch({
       {/* Clean Hero Header */}
       <section className="hero-section">
         <div className="hero-pill">
-          <Sparkles size={14} color="#d97706" />
+          <Sparkles size={12} color="#d97706" />
           <span>Bureau of Indian Standards • National Procurement Directory</span>
         </div>
         <h1 className="hero-title">Find the Right Indian Standards</h1>
         <p className="hero-subtitle">
-          Describe the product, material, equipment, or technical specification to identify applicable IS codes, mandatory Quality Control Orders (QCOs), and procurement clauses.
+          Search by product, material, specification, or upload a tender document.
         </p>
-
-        {/* Procurement Technical Workflow Stepper (Requirement 4) */}
-        <div className="workflow-stepper" aria-label="Technical recommendation workflow">
-          <div className="stepper-item active">
-            <span className="stepper-num">1</span>
-            <span>Requirement</span>
-          </div>
-          <span className="stepper-arrow">→</span>
-          <div className="stepper-item active">
-            <span className="stepper-num">2</span>
-            <span>Relevant Standards</span>
-          </div>
-          <span className="stepper-arrow">→</span>
-          <div className="stepper-item">
-            <span className="stepper-num">3</span>
-            <span>Related Standards</span>
-          </div>
-          <span className="stepper-arrow">→</span>
-          <div className="stepper-item">
-            <span className="stepper-num">4</span>
-            <span>Testing & Safety Norms</span>
-          </div>
-        </div>
       </section>
 
       {/* Main Search Console */}
@@ -236,13 +213,15 @@ export default function SpecSearch({
             <Search size={16} color="#1e5bb8" />
             <span>Search Indian Standards</span>
           </label>
-          <span className="search-hint">🇮🇳 हिन्दी • Hinglish • English & Natural Language Queries Supported</span>
+          <span className="search-hint">हिन्दी • Hinglish • English</span>
         </div>
 
         {/* Input Mode Selector (Feature 1: Product descriptions vs Technical specifications vs Multilingual vs Natural Language vs Tender documents) */}
         <div className="input-mode-tabs">
+          <div className="input-mode-group" aria-label="Search input mode">
           <button
             type="button"
+            aria-pressed={inputMode === 'product'}
             className={`input-mode-tab ${inputMode === 'product' ? 'active' : ''}`}
             onClick={() => setInputMode('product')}
           >
@@ -251,6 +230,7 @@ export default function SpecSearch({
           </button>
           <button
             type="button"
+            aria-pressed={inputMode === 'spec'}
             className={`input-mode-tab ${inputMode === 'spec' ? 'active' : ''}`}
             onClick={() => setInputMode('spec')}
           >
@@ -259,6 +239,7 @@ export default function SpecSearch({
           </button>
           <button
             type="button"
+            aria-pressed={inputMode === 'multilingual'}
             className={`input-mode-tab ${inputMode === 'multilingual' ? 'active' : ''}`}
             onClick={() => setInputMode('multilingual')}
           >
@@ -267,20 +248,23 @@ export default function SpecSearch({
           </button>
           <button
             type="button"
+            aria-pressed={inputMode === 'natural'}
             className={`input-mode-tab ${inputMode === 'natural' ? 'active' : ''}`}
             onClick={() => setInputMode('natural')}
           >
             <span>💬</span>
             <span>Natural Language Query</span>
           </button>
+          </div>
           <button
             type="button"
-            className="input-mode-tab tender-switch-tab"
+            className="tender-switch-link"
             onClick={onSwitchToTender}
             title="Upload Tender PDF, CSV, or BoQ schedule for automatic clause audit"
           >
             <span>📂</span>
-            <span>Tender Document (PDF / CSV) ➔</span>
+            <span>Tender document</span>
+            <ArrowRight size={13} />
           </button>
         </div>
 
@@ -291,7 +275,7 @@ export default function SpecSearch({
               className="search-textarea"
               placeholder={
                 inputMode === 'product'
-                  ? "Enter product name or commodity description (e.g., 'PVC insulated electric cables for working voltages up to 1100 V', '22 Karat gold jewellery', or 'Portland Pozzolana Cement')..."
+                  ? "Enter product name or commodity description (e.g., 'PVC insulated electric cables for working voltages up to 1100 V')..."
                   : inputMode === 'spec'
                   ? "Paste technical specification clause, bill of quantities (BoQ) item, or engineering parameters (e.g., 'Reinforced cement concrete structural building construction M25 grade with nominal aggregate 20mm, slump 100mm, machine vibrated')..."
                   : inputMode === 'multilingual'
@@ -362,15 +346,7 @@ export default function SpecSearch({
 
         {/* Example Query Chips based on Selected Mode */}
         <div className="example-chips-section">
-          <span className="example-chips-label">
-            {inputMode === 'product'
-              ? 'Quick Product Examples:'
-              : inputMode === 'spec'
-              ? 'Quick Engineering Clauses:'
-              : inputMode === 'multilingual'
-              ? 'Quick Multilingual Examples (हिन्दी / Hinglish):'
-              : 'Quick Natural Language Inquiries:'}
-          </span>
+          <span className="example-chips-label">Try:</span>
           <div className="chips-wrap">
             {(inputMode === 'product'
               ? PRODUCT_CHIPS

@@ -17,6 +17,7 @@ from src.compliance.tender_compliance_auditor import TenderComplianceAuditor
 from src.database.sqlite_manager import get_standard_details
 from src.ingestion.tender_document_parser import TenderDocumentParser
 from src.llm.grounded_rationale_engine import GroundedRationaleEngine
+from src.integration.apisetu_gateway import APISetuBISGateway
 from src.localization.multilingual_engine import get_multilingual_representations
 from src.procurement.gem_specification_generator import GeMSpecificationGenerator
 from src.retrieval.hybrid_search_orchestrator import HybridSearchOrchestrator
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
     STATE["gem_generator"] = GeMSpecificationGenerator()
     STATE["rationale_engine"] = GroundedRationaleEngine()
     STATE["compliance_auditor"] = TenderComplianceAuditor()
+    STATE["apisetu_gateway"] = APISetuBISGateway()
     print(f"[API] Ready in {time.perf_counter() - t0:.2f}s")
     yield
 
@@ -90,6 +92,7 @@ class SearchResponse(BaseModel):
     query: str
     hits: list[StandardHit]
     latency_seconds: float
+    match_quality: str = "confident"  # 'confident' | 'uncertain' | 'no_match'
 
 
 class GeMClauseRequest(BaseModel):
@@ -162,7 +165,20 @@ def search_standards(req: SearchRequest):
             translations=trans,
         ))
 
-    return SearchResponse(query=req.query, hits=hits, latency_seconds=round(latency, 3))
+    # Derived from the single confidence decision point (get_confidence_band) on the top hit
+    if not hits:
+        match_quality = "no_match"
+    elif hits[0].confidence == "HIGH":
+        match_quality = "confident"
+    else:
+        match_quality = "uncertain"
+
+    return SearchResponse(
+        query=req.query,
+        hits=hits,
+        latency_seconds=round(latency, 3),
+        match_quality=match_quality,
+    )
 
 
 @app.post("/judge_search")
@@ -283,3 +299,33 @@ def get_standard(is_code: str):
     if not details:
         raise HTTPException(status_code=404, detail="Standard not found")
     return details
+
+
+# --- NeGD API Setu Compliant Endpoints ---
+
+@app.get("/api/v1/bis/standards/{is_code}")
+def apisetu_get_standard(is_code: str):
+    """NeGD API Setu endpoint: standard metadata, currency, and mandatory certification."""
+    gateway: APISetuBISGateway = STATE.get("apisetu_gateway")
+    if not gateway:
+        gateway = APISetuBISGateway()
+    return gateway.get_standard_details(is_code)
+
+
+@app.get("/api/v1/bis/qco/check")
+def apisetu_check_qco(is_code: str):
+    """NeGD API Setu endpoint: statutory QCO mandatory certification status."""
+    gateway: APISetuBISGateway = STATE.get("apisetu_gateway")
+    if not gateway:
+        gateway = APISetuBISGateway()
+    return gateway.check_qco_compliance(is_code)
+
+
+@app.get("/api/v1/bis/standards/{is_code}/allied")
+def apisetu_get_allied(is_code: str):
+    """NeGD API Setu endpoint: allied and normative reference standards."""
+    gateway: APISetuBISGateway = STATE.get("apisetu_gateway")
+    if not gateway:
+        gateway = APISetuBISGateway()
+    return gateway.get_allied_standards(is_code)
+
