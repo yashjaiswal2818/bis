@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileSpreadsheet, Award } from 'lucide-react';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import SpecSearch from './components/SpecSearch';
 import TenderAuditor from './components/TenderAuditor';
 import BenchmarkSandbox from './components/BenchmarkSandbox';
@@ -18,6 +19,17 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
 
+  // Language State (lifted to App so Header and SpecSearch share it)
+  const [displayLanguage, setDisplayLanguage] = useState(() => {
+    try { return localStorage.getItem('is_display_language') || 'en'; }
+    catch { return 'en'; }
+  });
+
+  const handleLanguageChange = (lang) => {
+    setDisplayLanguage(lang);
+    try { localStorage.setItem('is_display_language', lang); } catch {}
+  };
+
   // GeM Modal State
   const [isGeMModalOpen, setIsGeMModalOpen] = useState(false);
   const [selectedISCode, setSelectedISCode] = useState('');
@@ -25,7 +37,7 @@ export default function App() {
   const [isClauseLoading, setIsClauseLoading] = useState(false);
   const [clauseError, setClauseError] = useState(null);
 
-  // Standard Details Modal State (Requirement 7 & 8)
+  // Standard Details Modal State
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailedStandard, setDetailedStandard] = useState(null);
 
@@ -47,6 +59,12 @@ export default function App() {
   }, []);
 
   const handleSearch = async (query) => {
+    // null/empty query = clear results and return to landing
+    if (!query) {
+      setSearchResults(null);
+      setSearchError(null);
+      return;
+    }
     setIsSearching(true);
     setSearchError(null);
     try {
@@ -78,18 +96,14 @@ export default function App() {
   };
 
   const handleViewDetails = async (standard) => {
-    // Open immediately with existing hit data
     setDetailedStandard(standard);
     setIsDetailsOpen(true);
-
-    // Optionally augment with full SQLite details if available
     try {
       const fullDetails = await getStandardDetails(standard.is_code);
       if (fullDetails) {
         setDetailedStandard((prev) => ({
           ...prev,
           ...fullDetails,
-          // Preserve runtime rationale and confidence
           rationale: prev?.rationale || fullDetails.scope,
           confidence: prev?.confidence || 'HIGH',
         }));
@@ -101,37 +115,16 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <Header isOnline={isOnline} latency={engineLatency} />
+      <Header
+        isOnline={isOnline}
+        latency={engineLatency}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        displayLanguage={displayLanguage}
+        onLanguageChange={handleLanguageChange}
+      />
 
-      {/* Navigation Tabs */}
-      <nav className="nav-bar" role="navigation" aria-label="Main Navigation">
-        <div className="nav-inner">
-          <button
-            className={`nav-tab-btn ${activeTab === 'search' ? 'active' : ''}`}
-            onClick={() => setActiveTab('search')}
-          >
-            <Search size={15} />
-            <span>Find Standards</span>
-          </button>
-          <button
-            className={`nav-tab-btn ${activeTab === 'tender' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tender')}
-          >
-            <FileSpreadsheet size={15} />
-            <span>Tender & BoQ Auditor</span>
-          </button>
-          <button
-            className={`nav-tab-btn ${activeTab === 'benchmark' ? 'active' : ''}`}
-            onClick={() => setActiveTab('benchmark')}
-          >
-            <Award size={15} />
-            <span>Evaluation Sandbox</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Workspace */}
-      <main className="main-wrapper">
+      <main className="main-wrapper" id="main-content">
         {activeTab === 'search' && (
           <SpecSearch
             onOpenGeMClause={handleOpenGeMClause}
@@ -141,6 +134,7 @@ export default function App() {
             isSearching={isSearching}
             searchError={searchError}
             onSwitchToTender={() => setActiveTab('tender')}
+            displayLanguage={displayLanguage}
           />
         )}
 
@@ -156,7 +150,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Standard Details Modal (Requirement 7 & 8) */}
       <StandardDetailsModal
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
@@ -164,7 +157,6 @@ export default function App() {
         onOpenGeMClause={handleOpenGeMClause}
       />
 
-      {/* GeM Tender Specification Clause Modal */}
       <GeMClauseModal
         isOpen={isGeMModalOpen}
         onClose={() => setIsGeMModalOpen(false)}
@@ -173,6 +165,8 @@ export default function App() {
         isLoading={isClauseLoading}
         error={clauseError}
       />
+
+      <Footer />
     </div>
   );
 }

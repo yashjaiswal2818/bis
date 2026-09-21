@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, FileText, Download, CheckCircle, AlertTriangle, Loader2, Info, ArrowUpRight } from 'lucide-react';
-import { auditTenderFile } from '../api/client';
+import { auditTenderFile, exportPdfReport } from '../api/client';
 
 // Four states, one per parsed line item. NO_CONFIDENT_MATCH is the default: an item the
 // engine could not assess is not an item that passed.
@@ -35,6 +35,7 @@ const normalizeAuditState = (state) =>
 export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isAuditing, setIsAuditing] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [auditResult, setAuditResult] = useState(null);
   const [auditError, setAuditError] = useState(null);
   const [currentFileName, setCurrentFileName] = useState('');
@@ -74,6 +75,26 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
       setAuditError(err.message || 'Failed to audit tender document');
     } finally {
       setIsAuditing(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!auditResult) return;
+    setIsExportingPdf(true);
+    setAuditError(null);
+    try {
+      const pdfBlob = await exportPdfReport(auditResult, `Audit_${currentFileName || 'Report'}.pdf`);
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Audit_${currentFileName || 'Report'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      setAuditError(err.message || 'Failed to export PDF');
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -156,9 +177,11 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
           <Loader2 size={32} className="spin-icon" style={{ margin: '0 auto 0.75rem' }} />
           <p style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>
             Auditing {currentFileName} against Indian Standards & QCOs...
+            Reading selected BIS sources and auditing {currentFileName} against QCO mandates...
           </p>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             Parsing engineering clauses, decomposing work scope & matching authentic IS codes
+            Preparing an evidence-backed compliance analysis of technical specifications
           </span>
         </div>
       )}
@@ -202,6 +225,20 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
               <Download size={15} />
               <span>Export Audited Schedule (.csv)</span>
             </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className="btn-action-outline" 
+                onClick={handleExportPdf}
+                disabled={isExportingPdf}
+              >
+                {isExportingPdf ? <Loader2 size={15} className="spin" /> : <FileText size={15} />}
+                <span>{isExportingPdf ? 'Generating...' : 'Export Audit Report (PDF)'}</span>
+              </button>
+              <button className="btn-action-outline" onClick={handleExportAuditedBoQ}>
+                <Download size={15} />
+                <span>Export Audited Schedule (.csv)</span>
+              </button>
+            </div>
           </div>
 
           {auditResult.warning && (
@@ -420,6 +457,7 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
                               <span className="missing-arrow">➔</span>
                               <span className="missing-solution-badge is-badge">
                                 Missing IS Code: <strong>{mItem.missing_is_code}</strong>
+                                Missing IS Code: <strong style={{ fontFamily: 'var(--font-mono)' }}>{mItem.missing_is_code}</strong>
                               </span>
                             </div>
                           ))}

@@ -22,6 +22,7 @@ from src.integration.apisetu_gateway import APISetuBISGateway
 from src.localization.multilingual_engine import get_multilingual_representations
 from src.procurement.gem_specification_generator import GeMSpecificationGenerator
 from src.retrieval.hybrid_search_orchestrator import HybridSearchOrchestrator
+from src.compliance.edition_resolver import EditionResolver
 
 # Global State Container
 STATE: dict[str, Any] = {}
@@ -82,6 +83,7 @@ class StandardHit(BaseModel):
     amendments_count: int = 0
     rationale: str
     is_government_schedule_match: bool = False
+    edition_context: dict | None = None
     schedule_item_title: str | None = None
     schedule_category: str | None = None
     matched_grade: str | None = None
@@ -159,6 +161,7 @@ def search_standards(req: SearchRequest):
             amendments_count=r.amendments_count,
             rationale=rat,
             is_government_schedule_match=r.is_government_schedule_match,
+            edition_context=r.edition_context,
             schedule_item_title=r.schedule_item_title,
             schedule_category=r.schedule_category,
             matched_grade=r.matched_grade,
@@ -398,11 +401,21 @@ def registry_stats():
                 "FROM qco_compliance_rules r "
                 "LEFT JOIN standards_registry s ON s.is_code = r.is_code "
                 f"WHERE r.is_mandatory=1 AND TRIM(COALESCE({title_expr},'')) <> '' "
-                f"AND ({badge_case}) = ? ORDER BY LENGTH(title) ASC, r.is_code LIMIT {limit}",
+                f"AND ({badge_case}) = ? ORDER BY LENGTH(title) ASC, r.is_code",
                 (badge,)).fetchall()
+            
+            valid_rows = []
+            for r in rows:
+                code = r[0]
+                if not any(c.isdigit() for c in code) or code.count('(') != code.count(')'):
+                    continue
+                valid_rows.append(r)
+                if len(valid_rows) == limit:
+                    break
+
             samples.extend(
                 {"is_code": r[0], "title": r[1], "scheme": r[2], "order_name": r[3]}
-                for r in rows
+                for r in valid_rows
             )
     finally:
         conn.close()
@@ -436,7 +449,11 @@ def registry_stats():
         ),
     }
 
+    resolver = EditionResolver.get_instance()
+    edition_link_count = resolver.multi_edition_count if resolver else 0
+
     payload = {
+        "edition_link_count": edition_link_count,
         "data_provenance": provenance,
         "total_standards": total,
         "qco_notified_count": qco_total,
@@ -457,3 +474,7 @@ def apisetu_get_allied(is_code: str):
         gateway = APISetuBISGateway()
     return gateway.get_allied_standards(is_code)
 
+
+# --- Export Endpoint ---
+from src.api.export_router import router as export_router
+app.include_router(export_router, prefix="/api")

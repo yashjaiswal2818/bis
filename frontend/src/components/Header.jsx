@@ -1,42 +1,64 @@
 import React from 'react';
-import { ShieldCheck, Activity, Building2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, FileSpreadsheet, Award } from 'lucide-react';
 
-export default function Header({ isOnline, latency }) {
+export default function Header({ isOnline, latency, activeTab, setActiveTab, displayLanguage, onLanguageChange }) {
   return (
     <>
-      {/* Slim institutional identifier */}
-      <div className="gov-topbar">
-        <div className="gov-topbar-inner">
-          <span>Government of India · Ministry of Consumer Affairs, Food &amp; Public Distribution</span>
-          <span className="gov-topbar-right">BIS Act, 2016 · GFR Rule 144</span>
+      {/* Utility bar — thin dark strip */}
+      <div className="utility-bar">
+        <div className="utility-inner">
+          <span className="utility-left">Smart India Hackathon 2026 · Problem Statement 26108</span>
+          <div className="utility-right">
+            <a href="#main-content" className="skip-link">Skip to main content</a>
+            <div className="lang-toggle-group">
+              <button
+                className={`lang-btn ${displayLanguage === 'en' ? 'active' : ''}`}
+                onClick={() => onLanguageChange('en')}
+              >EN</button>
+              <button
+                className={`lang-btn ${displayLanguage === 'hi' ? 'active' : ''}`}
+                onClick={() => onLanguageChange('hi')}
+              >हिन्दी</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Header Bar */}
-      <header className="app-header">
-        <div className="header-inner">
-          <div className="brand-section">
-            <div className="bis-emblem-badge" title="Bureau of Indian Standards">
-              <span>BIS</span>
-            </div>
-            <div className="brand-title-wrap">
-              <div className="brand-title">
-                <span>Indian Standards Recommendation Platform</span>
-              </div>
-              <div className="brand-subtitle">
-                Standards identification, QCO verification and GeM clause drafting
-              </div>
+      {/* Main Header */}
+      <header className="portal-header">
+        <div className="portal-header-inner">
+          <div className="portal-brand">
+            <div className="brand-icon" aria-label="Indian Standards mark">IS</div>
+            <div className="brand-text">
+              <div className="brand-title">Indian Standards Recommendation Platform</div>
+              <div className="brand-tagline">Standards identification, QCO verification and GeM clause drafting</div>
             </div>
           </div>
 
-          <div className="header-meta">
-            <div className="health-badge" title={isOnline ? 'Connected to local engine' : 'Checking server status'}>
+          <div className="portal-nav-area">
+            <nav className="portal-nav" aria-label="Main Navigation">
+              <button
+                className={`nav-btn ${activeTab === 'search' ? 'active' : ''}`}
+                onClick={() => setActiveTab('search')}
+              >
+                <Search size={15} /> Find Standards
+              </button>
+              <button
+                className={`nav-btn ${activeTab === 'tender' ? 'active' : ''}`}
+                onClick={() => setActiveTab('tender')}
+              >
+                <FileSpreadsheet size={15} /> Tender &amp; BoQ Auditor
+              </button>
+              <button
+                className={`nav-btn ${activeTab === 'benchmark' ? 'active' : ''}`}
+                onClick={() => setActiveTab('benchmark')}
+              >
+                <Award size={15} /> Evaluation Sandbox
+              </button>
+            </nav>
+            <div className={`engine-status ${isOnline ? 'online' : ''}`}>
               <span className={`status-dot ${isOnline ? 'online' : ''}`} />
-              <span>
-                {isOnline
-                  ? `Engine Active ${latency ? `• ${latency}s` : ''}`
-                  : 'Engine Connecting...'}
-              </span>
+              <span>{isOnline ? 'Engine Active' : 'Connecting…'}</span>
             </div>
           </div>
         </div>

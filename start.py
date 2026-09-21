@@ -5,6 +5,11 @@ opens the browser to http://localhost:3000, and manages graceful shutdown.
 """
 from __future__ import annotations
 
+import os
+# Prevent OpenMP runtime conflict segfaults between FAISS and PyTorch
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import subprocess
 import sys
 import time

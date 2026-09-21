@@ -25,6 +25,7 @@ export default function LoadingSteps({ query }) {
         <Loader2 size={24} className="spin-icon" color="#1d4ed8" />
         <div>
           <h4 className="loading-title">Understanding Procurement Requirement</h4>
+          <h4 className="loading-title">Reading selected BIS sources and preparing an evidence-backed analysis...</h4>
           <p className="loading-subtitle">
             Analyzing "{query.length > 55 ? query.slice(0, 55) + '...' : query}" against national standards...
           </p>

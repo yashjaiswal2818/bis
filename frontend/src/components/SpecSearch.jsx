@@ -1,45 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { Search, AlertCircle, Info, FileQuestion, HelpCircle, History, ArrowRight, CheckCircle2, ChevronRight, X } from 'lucide-react';
+import { Search, AlertCircle, ArrowRight, ChevronRight, ExternalLink } from 'lucide-react';
 import { getRegistryStats } from '../api/client';
 import StandardCard from './StandardCard';
 import LoadingSteps from './LoadingSteps';
 
 const PRODUCT_CHIPS = [
-  { icon: '⚡', label: 'PVC Power Cables (1.1 kV)', query: 'PVC insulated electric cables for working voltages up to and including 1100 V' },
-  { icon: '🏷️', label: '22k Gold Jewellery & Artefacts', query: '22 Karat gold and gold alloys, jewellery and artefacts hallmarking' },
-  { icon: '🔩', label: 'Structural Steel TMT (Fe 500D)', query: 'High strength deformed steel bars and wires for concrete reinforcement (TMT Grade Fe 500D)' },
-  { icon: '💧', label: 'Drinking Water Quality', query: 'Drinking water quality specifications, physical, chemical and bacteriological parameters' },
-  { icon: '🧱', label: 'Portland Pozzolana Cement', query: 'Portland pozzolana cement flyash based for structural civil construction' },
-  { icon: '🚨', label: 'Fire Detection & Alarm System', query: 'Automatic fire detection and alarm systems, smoke detectors and fire alarm control panels' },
+  { label: 'PVC Cables 1100V', query: 'PVC insulated electric cables for working voltages up to and including 1100 V' },
+  { label: '22K Gold Hallmarking', query: '22 Karat gold and gold alloys, jewellery and artefacts hallmarking' },
+  { label: 'TMT Fe 500D', query: 'High strength deformed steel bars and wires for concrete reinforcement (TMT Grade Fe 500D)' },
+  { label: 'Drinking Water', query: 'Drinking water quality specifications, physical, chemical and bacteriological parameters' },
+  { label: 'Portland Cement PPC', query: 'Portland pozzolana cement flyash based for structural civil construction' },
 ];
 
 const SPEC_CHIPS = [
-  { icon: '📑', label: 'CPWD RCC Structural Work', query: 'Reinforced cement concrete structural building construction M25 grade with nominal aggregate 20mm, slump 100mm, machine vibrated' },
-  { icon: '📑', label: 'MES LT Distribution Panel', query: 'Replacement of Defective 415Volt LT Main Distribution Panel & 415 V LT Main Distribution Board, Street Light Incoming Cables, Main Incoming Power Cables and circuit Wirings' },
-  { icon: '📑', label: 'DoCA Precious Articles', query: 'Supply of 22 Karat gold medals for annual merit awards conforming to national hallmarking standards with 6-digit HUID' },
-  { icon: '📑', label: 'MeitY Lithium Storage Cells', query: 'Secondary sealed lithium cells and batteries for portable equipment under compulsory registration scheme' },
+  { label: 'CPWD RCC Work', query: 'Reinforced cement concrete structural building construction M25 grade with nominal aggregate 20mm, slump 100mm, machine vibrated' },
+  { label: 'MES LT Panel', query: 'Replacement of Defective 415Volt LT Main Distribution Panel & 415 V LT Main Distribution Board, Street Light Incoming Cables, Main Incoming Power Cables and circuit Wirings' },
+  { label: 'DoCA Gold Medals', query: 'Supply of 22 Karat gold medals for annual merit awards conforming to national hallmarking standards with 6-digit HUID' },
 ];
 
 const MULTILINGUAL_CHIPS = [
-  { icon: '⚡', label: '🇮🇳 हिन्दी: पीवीसी तार (1100V)', query: 'पीवीसी इंसुलेटेड बिजली के तार 1100 वोल्ट' },
-  { icon: '🏷️', label: '🇮🇳 हिन्दी: 22K सोना हॉलमार्किंग', query: '22 कैरेट सोने के आभूषण हॉलमार्किंग' },
-  { icon: '💧', label: '🇮🇳 हिन्दी: पीने का पानी परीक्षण', query: 'पीने का साफ पानी गुणवत्ता परीक्षण' },
-  { icon: '🧱', label: '🇮🇳 हिन्दी: पोर्टलैंड सीमेंट (PPC)', query: 'पोर्टलैंड पोजोलाना सीमेंट flyash based' },
-  { icon: '🔌', label: '🌐 Hinglish: bijli ke taar', query: 'bijli ke taar 1100V building wiring ke liye' },
-  { icon: '✨', label: '🌐 Hinglish: sone ke gehne 22k', query: 'sone ke gehne 22k hallmarking huid ke sath' },
+  { label: 'हिन्दी: पीवीसी तार (1100V)', query: 'पीवीसी इंसुलेटेड बिजली के तार 1100 वोल्ट' },
+  { label: 'हिन्दी: 22K सोना', query: '22 कैरेट सोने के आभूषण हॉलमार्किंग' },
+  { label: 'हिन्दी: पीने का पानी', query: 'पीने का साफ पानी गुणवत्ता परीक्षण' },
+  { label: 'Hinglish: bijli ke taar', query: 'bijli ke taar 1100V building wiring ke liye' },
 ];
 
 const NATURAL_CHIPS = [
-  { icon: '💬', label: 'Building Fire Safety in Schools', query: 'Which BIS standard should we follow for fire safety in school and hospital buildings?' },
-  { icon: '💬', label: 'Drinking Water Testing Norms', query: 'What are the official test methods for drinking water physical and chemical parameters?' },
-  { icon: '💬', label: '22k Gold HUID Requirement', query: 'We want to procure 22 carat gold medals with mandatory 6-digit HUID hallmarking for merit awards' },
-  { icon: '💬', label: 'Solar Rooftop Grid Connection', query: 'Which Indian standard is applicable for rooftop solar grid-tied photovoltaic inverters?' },
+  { label: 'Fire Safety in Schools', query: 'Which BIS standard should we follow for fire safety in school and hospital buildings?' },
+  { label: 'Drinking Water Tests', query: 'What are the official test methods for drinking water physical and chemical parameters?' },
+  { label: 'Solar Rooftop Grid', query: 'Which Indian standard is applicable for rooftop solar grid-tied photovoltaic inverters?' },
 ];
 
-const CONVERSATIONAL_PATTERNS = [
-  /^(?:hi|hello|hey|who are you|how are you|tell me a joke|test)\b/i,
-  /^(?:what is your name|greetings)\b/i,
+const CHIP_SETS = {
+  product: PRODUCT_CHIPS,
+  spec: SPEC_CHIPS,
+  multilingual: MULTILINGUAL_CHIPS,
+  natural: NATURAL_CHIPS,
+};
+
+const MODE_LABELS = [
+  { key: 'product',      label: 'Product Description' },
+  { key: 'spec',         label: 'Technical Specification' },
+  { key: 'multilingual', label: 'हिन्दी / Hinglish' },
+  { key: 'natural',      label: 'Natural Language' },
 ];
+
+const PLACEHOLDERS = {
+  product: 'Describe a product, material, or equipment…',
+  spec: 'Paste a tender clause, BoQ line item, or technical specification…',
+  multilingual: 'अपनी भाषा में खोजें — हिन्दी या Hinglish…',
+  natural: 'Ask a question about standards, testing, or compliance…',
+};
 
 export default function SpecSearch({
   onOpenGeMClause,
@@ -49,376 +60,215 @@ export default function SpecSearch({
   isSearching,
   searchError,
   onSwitchToTender,
+  displayLanguage,
 }) {
   const [query, setQuery] = useState('');
-  const [inputMode, setInputMode] = useState('product'); // 'product' | 'spec'
+  const [inputMode, setInputMode] = useState('product');
   const [stats, setStats] = useState(null);
-  const [statsFailed, setStatsFailed] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const [activeComponentFilter, setActiveComponentFilter] = useState('ALL');
-  const [displayLanguage, setDisplayLanguage] = useState(() => {
-    try {
-      return localStorage.getItem('is_display_language') || 'en';
-    } catch {
-      return 'en';
-    }
-  });
 
-  const handleLanguageChange = (lang) => {
-    setDisplayLanguage(lang);
-    try {
-      localStorage.setItem('is_display_language', lang);
-    } catch {
-      // Ignore
-    }
-  };
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('is_recent_searches');
-      if (saved) {
-        setRecentSearches(JSON.parse(saved));
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
-
-  const saveToHistory = (q) => {
-    const trimmed = q.trim();
-    if (!trimmed || trimmed.length < 3) return;
-    setRecentSearches((prev) => {
-      const filtered = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
-      const updated = [trimmed, ...filtered].slice(0, 8);
-      try {
-        localStorage.setItem('is_recent_searches', JSON.stringify(updated));
-      } catch {
-        // Ignore
-      }
-      return updated;
-    });
-  };
-
-  const handleClearHistory = () => {
-    setRecentSearches([]);
-    localStorage.removeItem('is_recent_searches');
-    setShowHistory(false);
-  };
-
-  const handleSubmit = (e) => {
-    e?.preventDefault();
-    if (query.trim()) {
-      saveToHistory(query);
-      setActiveComponentFilter('ALL');
-      onSearch(query.trim());
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
+  // Load stats once
   useEffect(() => {
     let alive = true;
     getRegistryStats()
       .then((d) => { if (alive) setStats(d); })
-      .catch(() => { if (alive) setStatsFailed(true); });
+      .catch(() => {});
     return () => { alive = false; };
   }, []);
 
+  // Load recent searches from session
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('is_recent_searches_v3');
+      if (saved) setRecentSearches(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  // Track real searches into recent-searches table
+  useEffect(() => {
+    if (searchResults && searchResults.query) {
+      const hit = searchResults.hits?.[0];
+      const entry = {
+        query: searchResults.query,
+        top_code: hit ? hit.is_code : '—',
+        confidence: hit ? (hit.confidence || hit.relevance_band || 'LOW') : '—',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setRecentSearches((prev) => {
+        const deduped = prev.filter((r) => r.query.toLowerCase() !== entry.query.toLowerCase());
+        const updated = [entry, ...deduped].slice(0, 5);
+        try { sessionStorage.setItem('is_recent_searches_v3', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    }
+  }, [searchResults]);
+
+  const handleSubmit = (e) => {
+    e?.preventDefault();
+    if (query.trim()) onSearch(query.trim());
+  };
+
   const handleSelectChip = (q) => {
     setQuery(q);
-    saveToHistory(q);
-    setActiveComponentFilter('ALL');
     onSearch(q);
   };
 
-  const isConversationalQuery = (text) => {
-    const trimmed = text.trim();
-    if (trimmed.length < 2) return false;
-    const lower = trimmed.toLowerCase();
-    // Never block queries with technical, standards, materials, or multilingual keywords
-    if (
-      lower.includes('standard') ||
-      lower.includes('is ') ||
-      lower.includes('code') ||
-      lower.includes('bis') ||
-      lower.includes('norm') ||
-      lower.includes('fire') ||
-      lower.includes('water') ||
-      lower.includes('cement') ||
-      lower.includes('cable') ||
-      lower.includes('wire') ||
-      lower.includes('gold') ||
-      lower.includes('steel') ||
-      lower.includes('safety') ||
-      lower.includes('test') ||
-      lower.includes('taar') ||
-      lower.includes('bijli') ||
-      lower.includes('sone') ||
-      lower.includes('paani') ||
-      lower.includes('gehne') ||
-      lower.includes('loha') ||
-      /[\u0900-\u097F]/.test(lower)
-    ) {
-      return false;
-    }
-    return CONVERSATIONAL_PATTERNS.some((pat) => pat.test(trimmed));
+  const handleClear = () => {
+    setQuery('');
+    onSearch(null);
   };
 
-  const hasInvalidInput = query.trim() && isConversationalQuery(query);
-
   const hits = searchResults?.hits || [];
-  const queryLower = (searchResults?.query || '').toLowerCase();
+  const mostRelevantHits = hits.filter((h) => h.confidence === 'HIGH' || h.rank <= 2);
+  const relatedHits = hits.filter((h) => !mostRelevantHits.includes(h));
+  const activeChips = CHIP_SETS[inputMode] || PRODUCT_CHIPS;
 
-  const detectedComponents = [];
-  if (queryLower.includes('panel') || queryLower.includes('board') || queryLower.includes('switchgear')) {
-    detectedComponents.push({ id: 'PANEL', label: 'LT Panel & Distribution Boards', keywords: ['panel', 'switchgear', 'board', 'breaker', 'distribution'] });
-  }
-  if (queryLower.includes('cable') || queryLower.includes('wire') || queryLower.includes('wiring')) {
-    detectedComponents.push({ id: 'CABLE', label: 'Cables & Conductors', keywords: ['cable', 'wire', 'conductor', 'pvc', 'xlpe'] });
-  }
-  if (queryLower.includes('earthing') || queryLower.includes('earth')) {
-    detectedComponents.push({ id: 'EARTHING', label: 'Earthing & Protection', keywords: ['earthing', 'earth', 'grounding'] });
-  }
-  if (queryLower.includes('pipe') || queryLower.includes('sewerage') || queryLower.includes('drainage')) {
-    detectedComponents.push({ id: 'PIPE', label: 'Pipes & Drainage', keywords: ['pipe', 'drainage', 'culvert', 'sewerage'] });
-  }
-  if (queryLower.includes('cement') || queryLower.includes('concrete') || queryLower.includes('aggregate') || queryLower.includes('steel')) {
-    detectedComponents.push({ id: 'CIVIL', label: 'Civil & Structural Materials', keywords: ['cement', 'concrete', 'aggregate', 'steel', 'tmt', 'bars'] });
-  }
+  /* ------------------------------------------------------------------ */
+  /*  LANDING PAGE (no results, not searching)                          */
+  /* ------------------------------------------------------------------ */
+  if (!searchResults && !isSearching) {
+    return (
+      <div className="portal-landing">
+        {/* ── Hero ── */}
+        <section className="hero">
+          <div className="hero-grid-bg" aria-hidden="true" />
+          <div className="hero-inner">
+            <div className="hero-content">
+              <h1>
+                Find the right{' '}
+                <span className="accent">Indian Standard</span>
+                <br />for every procurement line item
+              </h1>
+              <p className="hero-sub">
+                Semantic search across 33,500+ BIS standards with automatic
+                Quality Control Order verification, edition mapping, and
+                allied-standard discovery.
+              </p>
 
-  const filteredHits = hits.filter((hit) => {
-    if (activeComponentFilter === 'ALL') return true;
-    const comp = detectedComponents.find((c) => c.id === activeComponentFilter);
-    if (!comp) return true;
-    const text = `${hit.is_code} ${hit.title} ${hit.scope || ''} ${hit.schedule_category || ''}`.toLowerCase();
-    return comp.keywords.some((kw) => text.includes(kw));
-  });
-
-  const mostRelevantHits = filteredHits.filter((h) => h.confidence === 'HIGH' || h.rank <= 2);
-  const relatedHits = filteredHits.filter((h) => !mostRelevantHits.includes(h));
-
-  return (
-    <div className="spec-search-container">
-      {/* Search instrument: mode strip, input, and actions read as one unit. */}
-      <div className="search-card">
-        <div className="input-mode-tabs">
-          <div className="input-mode-group" aria-label="Search input mode">
-          <button
-            type="button"
-            aria-pressed={inputMode === 'product'}
-            className={`input-mode-tab ${inputMode === 'product' ? 'active' : ''}`}
-            onClick={() => setInputMode('product')}
-          >
-            <span>🏷️</span>
-            <span>Product Description</span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={inputMode === 'spec'}
-            className={`input-mode-tab ${inputMode === 'spec' ? 'active' : ''}`}
-            onClick={() => setInputMode('spec')}
-          >
-            <span>📑</span>
-            <span>Technical Specification</span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={inputMode === 'multilingual'}
-            className={`input-mode-tab ${inputMode === 'multilingual' ? 'active' : ''}`}
-            onClick={() => setInputMode('multilingual')}
-          >
-            <span>🇮🇳</span>
-            <span>हिन्दी / Hinglish</span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={inputMode === 'natural'}
-            className={`input-mode-tab ${inputMode === 'natural' ? 'active' : ''}`}
-            onClick={() => setInputMode('natural')}
-          >
-            <span>💬</span>
-            <span>Natural Language Query</span>
-          </button>
-          </div>
-          <div className="search-strip-right">
-            <span className="lang-indicator" title="English, हिन्दी and Hinglish queries supported">EN · हिन्दी</span>
-            <button
-              type="button"
-              className="tender-switch-link"
-              onClick={onSwitchToTender}
-              title="Upload Tender PDF, CSV, or BoQ schedule for automatic clause audit"
-            >
-              <span>Tender document</span>
-              <ArrowRight size={13} />
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="search-box-container">
-          <div className="search-textarea-wrap">
-            <textarea
-              id="tender-query"
-              className="search-textarea"
-              placeholder={
-                inputMode === 'product'
-                  ? "Search for a product, material, or specification..."
-                  : inputMode === 'spec'
-                  ? "Paste a specification clause or BoQ line item..."
-                  : inputMode === 'multilingual'
-                  ? "अपनी भाषा में खोजें — हिन्दी या Hinglish..."
-                  : "Ask a question about standards, testing, or compliance..."
-              }
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={2}
-            />
-
-            <div className="search-controls-bar">
-              <div className="search-actions-left">
-                {recentSearches.length > 0 && (
+              {/* Mode selector */}
+              <div className="mode-bar">
+                {MODE_LABELS.map((m) => (
                   <button
-                    type="button"
-                    className="history-toggle-btn"
-                    onClick={() => setShowHistory(!showHistory)}
-                    title="View recent procurement searches"
-                  >
-                    <History size={14} />
-                    <span>Recent ({recentSearches.length})</span>
+                    key={m.key}
+                    className={`mode-btn ${inputMode === m.key ? 'active' : ''}`}
+                    onClick={() => setInputMode(m.key)}
+                  >{m.label}</button>
+                ))}
+              </div>
+
+              {/* Search pill */}
+              <form onSubmit={handleSubmit} className="search-pill">
+                <Search size={20} className="pill-icon" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={PLACEHOLDERS[inputMode]}
+                />
+                <button type="submit" disabled={!query.trim() || isSearching}>
+                  Search
+                </button>
+              </form>
+
+              {/* Try chips */}
+              <div className="chip-row">
+                <span className="chip-label">Try:</span>
+                {activeChips.map((c) => (
+                  <button key={c.label} className="chip" onClick={() => handleSelectChip(c.query)}>
+                    {c.label}
                   </button>
-                )}
-                <span className="search-char-count">{query.length} chars</span>
+                ))}
               </div>
 
-              <div className="search-shortcut-hint">
-                <span>Press <strong>Enter ↵</strong> to search</span>
-              </div>
-
-              <button
-                type="submit"
-                className="btn-primary-search"
-                disabled={isSearching || !query.trim()}
-              >
-                <Search size={16} />
-                <span>Search Indian Standards</span>
+              <button className="tender-cta" onClick={onSwitchToTender}>
+                Audit a tender document <ArrowRight size={16} />
               </button>
             </div>
+
+            {/* Trust card */}
+            <aside className="trust-card">
+              <h3>Live Registry</h3>
+              {stats ? (
+                <dl className="trust-dl">
+                  <div><dt>Standards indexed</dt><dd>{stats.total_standards?.toLocaleString('en-IN')}</dd></div>
+                  <div><dt>QCO-notified products</dt><dd>{stats.qco_notified_count?.toLocaleString('en-IN')}</dd></div>
+                  <div><dt>Certification schemes</dt><dd>{stats.scheme_count}</dd></div>
+                  {stats.edition_link_count != null && (
+                    <div><dt>Edition links</dt><dd>{stats.edition_link_count?.toLocaleString('en-IN')}</dd></div>
+                  )}
+                </dl>
+              ) : (
+                <div className="trust-skeleton">
+                  <div /><div /><div /><div />
+                </div>
+              )}
+              {stats?.data_provenance && (
+                <p className="trust-prov">
+                  Source: {stats.data_provenance.source}<br />
+                  Snapshot: {stats.data_provenance.snapshot_date}
+                </p>
+              )}
+            </aside>
           </div>
-        </form>
+        </section>
 
-        {/* Recent Searches Panel */}
-        {showHistory && recentSearches.length > 0 && (
-          <div className="recent-searches-panel">
-            <div className="recent-header">
-              <span>Recent Procurement Searches</span>
-              <button className="recent-clear-btn" onClick={handleClearHistory}>
-                Clear All
-              </button>
-            </div>
-            <div className="recent-list">
-              {recentSearches.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="recent-item-btn"
-                  onClick={() => handleSelectChip(item)}
-                >
-                  {item.length > 45 ? item.slice(0, 45) + '...' : item}
+        {/* ── Capabilities ── */}
+        <section className="cap-section">
+          <div className="cap-inner">
+            <h2>What can this engine do?</h2>
+            <div className="cap-grid">
+              {[
+                { icon: '🔍', title: 'Find applicable standards', desc: 'Search by product name, technical specification, or natural-language question.', action: () => document.querySelector('.search-pill input')?.focus() },
+                { icon: '📑', title: 'Audit a tender or BoQ', desc: 'Upload a PDF or CSV and verify every line item for standard compliance.', action: onSwitchToTender },
+                { icon: '🛡️', title: 'Check mandatory certification', desc: 'Verify ISI, CRS, and Hallmarking QCO enforcement for any product.', action: () => handleSelectChip('Packaged drinking water') },
+                { icon: '🕒', title: 'Check edition currency', desc: 'Amber badges flag superseded editions and link to the current version.', action: () => handleSelectChip('33 Grade Ordinary Portland Cement') },
+              ].map((c) => (
+                <button key={c.title} className="cap-card" onClick={c.action}>
+                  <span className="cap-emoji">{c.icon}</span>
+                  <strong>{c.title}</strong>
+                  <span>{c.desc}</span>
+                  <ChevronRight size={16} className="cap-arrow" />
                 </button>
               ))}
             </div>
           </div>
-        )}
+        </section>
 
-      </div>
+        {/* ── Data section ── */}
+        <section className="data-section">
+          <div className="data-inner">
+            {/* Recent searches */}
+            <div className="data-panel data-wide">
+              <h3>Recent searches</h3>
+              {recentSearches.length > 0 ? (
+                <table className="recent-tbl">
+                  <thead>
+                    <tr><th>Query</th><th>Top result</th><th>Confidence</th><th>Time</th></tr>
+                  </thead>
+                  <tbody>
+                    {recentSearches.map((r, i) => (
+                      <tr key={i} onClick={() => handleSelectChip(r.query)}>
+                        <td className="rt-q">{r.query}</td>
+                        <td className="rt-c">{r.top_code}</td>
+                        <td><span className={`conf-pill conf-${(r.confidence || '').toLowerCase()}`}>{r.confidence}</span></td>
+                        <td className="rt-t">{r.time}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="empty-msg">Your searches will appear here</p>
+              )}
+            </div>
 
-      {/* Secondary: one-click starting points, deliberately quiet. */}
-      <div className="example-chips-section">
-          <span className="example-chips-label">Try</span>
-          <div className="chips-wrap">
-            {(inputMode === 'product'
-              ? PRODUCT_CHIPS
-              : inputMode === 'spec'
-              ? SPEC_CHIPS
-              : inputMode === 'multilingual'
-              ? MULTILINGUAL_CHIPS
-              : NATURAL_CHIPS
-            ).map((item, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className="chip-btn"
-                onClick={() => handleSelectChip(item.query)}
-              >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-      </div>
-
-      {/* Registry console: live counts from standards_master.db, at-rest only. */}
-      {!isSearching && !searchResults && !statsFailed && (
-        <div className="registry-console">
-          <div className="registry-strip">
-            {stats ? (
-              <>
-                <div className="stat-block">
-                  <div className="stat-value">{stats.total_standards.toLocaleString('en-IN')}</div>
-                  <div className="stat-label">Standards indexed</div>
-                </div>
-                <div className="stat-block">
-                  <div className="stat-value">{stats.qco_notified_count.toLocaleString('en-IN')}</div>
-                  <div className="stat-label">QCO-notified products</div>
-                </div>
-                <div className="stat-block">
-                  <div className="stat-value">{stats.scheme_count}</div>
-                  <div className="stat-label">Certification schemes</div>
-                </div>
-              </>
-            ) : (
-              [0, 1, 2].map((i) => (
-                <div className="stat-block" key={i}>
-                  <div className="skeleton skeleton-value" />
-                  <div className="skeleton skeleton-label" />
-                </div>
-              ))
-            )}
-          </div>
-
-          {stats && (
-            <p className="provenance-line">
-              {stats.data_provenance?.snapshot_date
-                ? `Registry snapshot: ${stats.data_provenance.source}, ${stats.data_provenance.snapshot_date}`
-                : `Registry snapshot: ${stats.data_provenance?.source || 'source not recorded'} \u00b7 snapshot date: not recorded`}
-              {' \u00b7 '}Editions not continuously synced with BIS
-            </p>
-          )}
-
-          <div className="console-grid">
-            <section className="console-panel">
-              <div className="console-panel-head">
-                <h2 className="console-panel-title">Mandatory certification watch</h2>
-                <span className="console-panel-meta">
-                  {stats ? `Sample of ${stats.qco_notified_count.toLocaleString('en-IN')} notified products` : ''}
-                </span>
-              </div>
-              {stats ? (
-                <ul className="qco-list">
+            {/* QCO watch */}
+            <div className="data-panel data-narrow">
+              <h3>Mandatory certification watch</h3>
+              {stats?.qco_samples ? (
+                <ul className="qco-ul">
                   {stats.qco_samples.map((row) => (
                     <li key={row.is_code}>
-                      <button
-                        type="button"
-                        className="qco-row"
-                        onClick={() => handleSelectChip(row.is_code)}
-                        title={row.order_name}
-                      >
+                      <button className="qco-row" onClick={() => handleSelectChip(row.is_code)} title={row.order_name}>
                         <span className="qco-code">{row.is_code}</span>
                         <span className="qco-title">{row.title}</span>
                         <span className={`qco-badge qco-badge-${row.scheme.toLowerCase()}`}>{row.scheme}</span>
@@ -427,242 +277,78 @@ export default function SpecSearch({
                   ))}
                 </ul>
               ) : (
-                <ul className="qco-list">
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <li key={i}><div className="skeleton skeleton-row" /></li>
-                  ))}
-                </ul>
+                <p className="empty-msg">Loading…</p>
               )}
-            </section>
-
-            <section className="console-panel">
-              <div className="console-panel-head">
-                <h2 className="console-panel-title">Registry by division</h2>
-                <span className="console-panel-meta">BIS technical divisions</span>
-              </div>
-              {stats ? (
-                <ul className="division-list">
-                  {stats.divisions.map((d) => (
-                    <li className="division-row" key={d.name}>
-                      <span className="division-name">{d.name}</span>
-                      <span className="division-count">{d.count.toLocaleString('en-IN')}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <ul className="division-list">
-                  {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                    <li key={i}><div className="skeleton skeleton-row-sm" /></li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Invalid Query Alert (Requirement 11) */}
-      {hasInvalidInput && (
-        <div style={{
-          background: '#fffbeb',
-          border: '1.5px solid #fde68a',
-          borderRadius: 'var(--radius-lg)',
-          padding: '1.1rem 1.35rem',
-          color: '#92400e',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '0.75rem',
-          marginBottom: '1.5rem',
-          boxShadow: 'var(--shadow-xs)'
-        }}>
-          <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-          <div>
-            <strong style={{ display: 'block', fontSize: '0.92rem', marginBottom: '0.2rem' }}>
-              This doesn't appear to be a standards-related requirement.
-            </strong>
-            <span style={{ fontSize: '0.86rem', color: '#78350f' }}>
-              Try entering a product, material, equipment, construction activity, testing requirement, or procurement specification (e.g. <em>"PVC insulated power cables"</em> or <em>"415 V LT distribution panel"</em>).
-            </span>
+        {/* ── External resources ── */}
+        <section className="ext-section">
+          <div className="ext-inner">
+            <h3>External resources</h3>
+            <div className="ext-row">
+              {[
+                { name: 'bis.gov.in', href: 'https://bis.gov.in' },
+                { name: 'standardsbis.bsbedge.com', href: 'https://standardsbis.bsbedge.com' },
+                { name: 'manakonline.in', href: 'https://manakonline.in' },
+                { name: 'BIS CARE', href: 'https://www.bis.gov.in/bis-care-app/' },
+              ].map((l) => (
+                <a key={l.name} href={l.href} target="_blank" rel="noreferrer">
+                  {l.name} <ExternalLink size={13} />
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        </section>
+      </div>
+    );
+  }
 
-      {/* Search Error Alert */}
+  /* ------------------------------------------------------------------ */
+  /*  RESULTS VIEW (searching or has results)                           */
+  /* ------------------------------------------------------------------ */
+  return (
+    <div className="results-page">
+      {/* Compact search bar */}
+      <div className="results-search-bar">
+        <form onSubmit={handleSubmit} className="results-form">
+          <Search size={18} className="rsb-icon" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search Indian Standards…"
+          />
+          <button type="submit" className="rsb-search" disabled={isSearching || !query.trim()}>
+            Search
+          </button>
+          <button type="button" className="rsb-clear" onClick={handleClear}>
+            ← Back
+          </button>
+        </form>
+      </div>
+
+      {isSearching && <LoadingSteps />}
+
       {searchError && (
-        <div style={{
-          background: '#fef2f2',
-          border: '1.5px solid #fecaca',
-          borderRadius: 'var(--radius-lg)',
-          padding: '1.1rem 1.35rem',
-          color: '#991b1b',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.65rem',
-          marginBottom: '1.5rem',
-          boxShadow: 'var(--shadow-xs)'
-        }}>
-          <AlertCircle size={20} />
+        <div className="error-banner">
+          <AlertCircle size={16} />
           <span>{searchError}</span>
         </div>
       )}
 
-      {/* Multi-Step Loading Experience (Requirement 12) */}
-      {isSearching && <LoadingSteps query={query} />}
-
-      {/* Search Results Display */}
       {!isSearching && searchResults && (
-        <section className="results-section">
-          {/* Results Meta Bar */}
-          <div className="results-meta-bar">
-            <div className="results-count-title">
-              Recommended Indian Standards ({hits.length})
-            </div>
-            <div className="results-meta-tags">
-              <span className="badge badge-neutral">
-                Search Latency: {searchResults.latency_seconds}s
-              </span>
-              <span className="badge badge-neutral">
-                <span>Registry whitelist · hallucination guard active</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Multilingual Result Language Switcher (Govt Procurement Multi-Language Bar) */}
-          <div className="result-language-switcher-bar">
-            <div className="result-lang-label">
-              <span>🌐</span>
-              <span>Result Language / निकालाची भाषा:</span>
-            </div>
-            <div className="result-lang-buttons">
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'en' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('en')}
-                title="Official English as gazetted by BIS"
-              >
-                <span>🇬🇧 English</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'mr' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('mr')}
-                title="मराठीत निकाल पहा (View results in Marathi)"
-              >
-                <span>🇮🇳 मराठी</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'hi' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('hi')}
-                title="हिन्दी में परिणाम देखें (View results in Hindi)"
-              >
-                <span>🇮🇳 हिन्दी</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'ta' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('ta')}
-                title="தமிழில் முடிவுகளைக் காண்க (View results in Tamil)"
-              >
-                <span>🇮🇳 தமிழ்</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'te' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('te')}
-                title="తెలుగులో ఫలితాలను చూడండి (View results in Telugu)"
-              >
-                <span>🇮🇳 తెలుగు</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'bn' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('bn')}
-                title="বাংলায় ফলাফল দেখুন (View results in Bengali)"
-              >
-                <span>🇮🇳 বাংলা</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'gu' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('gu')}
-                title="ગુજરાતીમાં પરિણામો જુઓ (View results in Gujarati)"
-              >
-                <span>🇮🇳 ગુજરાતી</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-lang-choice ${displayLanguage === 'kn' ? 'active' : ''}`}
-                onClick={() => handleLanguageChange('kn')}
-                title="ಕನ್ನಡದಲ್ಲಿ ಫಲಿತಾಂಶಗಳನ್ನು ವೀಕ್ಷಿಸಿ (View results in Kannada)"
-              >
-                <span>🇮🇳 ಕನ್ನಡ</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Semantic Neural Understanding Badge (Feature 2) */}
-          <div className="semantic-understanding-bar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <span style={{ fontSize: '1.25rem' }}>🧠</span>
-              <div>
-                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
-                  Semantic Understanding & Neural Ranking
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                  Matches derived from multi-dimensional engineering scope and parametric concepts (BGE-M3 1024-dim dense cross-encoder), not simple keyword matching.
-                </div>
-              </div>
-            </div>
-            <span className="badge badge-blue">Dense Embeddings + Neural Reranker</span>
-          </div>
-
-          {/* Complex Query Component Filter (Requirement 9) */}
-          {detectedComponents.length > 1 && (
-            <div className="component-filter-bar">
-              <span className="component-filter-label">Filter Component:</span>
-              <button
-                className={`component-pill-btn ${activeComponentFilter === 'ALL' ? 'active' : ''}`}
-                onClick={() => setActiveComponentFilter('ALL')}
-              >
-                All Standards ({hits.length})
-              </button>
-              {detectedComponents.map((comp) => (
-                <button
-                  key={comp.id}
-                  className={`component-pill-btn ${activeComponentFilter === comp.id ? 'active' : ''}`}
-                  onClick={() => setActiveComponentFilter(comp.id)}
-                >
-                  {comp.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Empty State (Requirement 10) */}
+        <section className="results-body">
           {hits.length === 0 ? (
             <div className="empty-state-box">
-              <div className="empty-state-icon">
-                <FileQuestion size={26} />
-              </div>
-              <h3 className="empty-state-title">No closely matching Indian Standard found</h3>
+              <h3 className="empty-state-title">No matching Indian Standard found</h3>
               <p className="empty-state-desc">
-                The search query did not yield any high-confidence match in the official 33,553 Bureau of Indian Standards catalog.
-                Try describing the product, material, equipment, process or technical requirement in more detail.
+                Try describing the product, material, or technical requirement in more detail.
               </p>
-
-              <div className="empty-tips-card">
-                <div className="empty-tips-title">Search Tips for Procurement Officers:</div>
-                <ul className="empty-tips-list">
-                  <li><strong>Standard Number:</strong> Enter the direct code if known (e.g. <code>IS 694</code>, <code>IS 456</code>, <code>IS 1786</code>).</li>
-                  <li><strong>Technical Parameters:</strong> Include voltage, grade, or material type (e.g. <em>"415 V LT switchgear"</em>, <em>"43 Grade OPC"</em>).</li>
-                  <li><strong>Avoid Brand Names:</strong> Citing generic specifications rather than proprietary vendor brand names.</li>
-                </ul>
-              </div>
             </div>
           ) : (
             <>
-              {/* Ranking Tier 1: Most Relevant (Requirement 6) */}
               {mostRelevantHits.length > 0 && (
                 <div className="ranking-tier-group">
                   <div className="ranking-tier-header">
@@ -676,16 +362,15 @@ export default function SpecSearch({
                       onOpenGeMClause={onOpenGeMClause}
                       onViewDetails={onViewDetails}
                       displayLanguage={displayLanguage}
+                      onSearch={onSearch}
                     />
                   ))}
                 </div>
               )}
-
-              {/* Ranking Tier 2: Related Standards (Requirement 6) */}
               {relatedHits.length > 0 && (
-                <div className="ranking-tier-group" style={{ marginTop: '1.25rem' }}>
+                <div className="ranking-tier-group related-tier">
                   <div className="ranking-tier-header">
-                    <span className="ranking-tier-title">Related & Allied Standards</span>
+                    <span className="ranking-tier-title">Related &amp; Allied Standards</span>
                     <span className="ranking-tier-count">{relatedHits.length}</span>
                   </div>
                   {relatedHits.map((hit) => (
@@ -695,6 +380,7 @@ export default function SpecSearch({
                       onOpenGeMClause={onOpenGeMClause}
                       onViewDetails={onViewDetails}
                       displayLanguage={displayLanguage}
+                      onSearch={onSearch}
                     />
                   ))}
                 </div>
@@ -703,8 +389,9 @@ export default function SpecSearch({
           )}
 
           <p className="edition-disclosure">
-            Edition as recorded in registry snapshot. Verify current edition at
-            {' '}standardsbis.bsbedge.com{' '}before use in tender documents.
+            Edition as recorded in registry snapshot. Verify current edition at{' '}
+            <a href="https://standardsbis.bsbedge.com" target="_blank" rel="noreferrer">standardsbis.bsbedge.com</a>{' '}
+            before use in tender documents.
           </p>
         </section>
       )}

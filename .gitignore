@@ -31,3 +31,20 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# Scratch and External Repos
+scratch/
+IS-Recommendation-Engine/
+BIS/
+
+*.bak
+*.pdf
+*.db-wal
+*.db-shm
+scratch/
+scratchpad/
+*.backup
+*_backup*
+__pycache__/
+*.pyc
+.DS_Store

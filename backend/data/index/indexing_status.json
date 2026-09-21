@@ -1,0 +1,15 @@
+{
+  "status": "RUNNING",
+  "process_id": 21308,
+  "completed": 33564,
+  "verified_checkpoint_saved": 33564,
+  "total": 33564,
+  "percentage": 100.0,
+  "elapsed_wall_minutes": 336.2,
+  "eta_hours": 0.0,
+  "standards_per_second": 1.62,
+  "memory_mb": 15.1,
+  "model": "BAAI/bge-m3 (1024 dimensions)",
+  "message": "Embedding in progress! 33,564 / 33,564 standards encoded (33,564 saved to disk).",
+  "updated_at": "2026-09-20 09:20:16"
+}

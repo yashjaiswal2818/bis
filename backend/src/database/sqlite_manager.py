@@ -49,6 +49,18 @@ def extract_base_code(code: str) -> str:
     return re.sub(r"\s+", "", cleaned).lower()
 
 
+def validate_supersession(source_is_code: str, superseded_by: str | None, is_cross_code_allowed: bool = False) -> str | None:
+    """Rejects any superseded_by value whose base code differs from the source, to prevent prefix-matching bugs."""
+    if not superseded_by:
+        return None
+    source_base = extract_base_code(source_is_code)
+    target_base = extract_base_code(superseded_by)
+    if source_base != target_base and not is_cross_code_allowed:
+        print(f"[Guard] Rejected invalid supersession: {source_is_code} -> {superseded_by}")
+        return None
+    return superseded_by
+
+
 KNOWN_TEST_CODES = {"is4031", "is2386", "is516", "is1608", "is3025", "is12235", "is1966", "is3495", "is1727", "is1367"}
 KNOWN_INSTALLATION_CODES = {"is7634", "is456", "is13920", "is1893", "is4021", "is2212", "is2250", "is1478", "is1742"}
 KNOWN_SAFETY_CODES = {"is14489", "is1642", "is2925", "is15683", "is2171", "is3521", "is3844"}
@@ -107,11 +119,16 @@ def seed_database_from_files(
                 amendments = r.get("amendments_count", 0)
 
                 # Sample known revisions for building materials
-                if "1989" in is_code and "269" in is_code:
+                import re
+                if "1989" in is_code and re.search(r'\b269(?=[:\s(]|$)', is_code):
                     status = "SUPERSEDED"
                     superseded_by = "IS 269: 2015"
                     reaffirm_year = 2021
                     amendments = 4
+
+                superseded_by = validate_supersession(is_code, superseded_by)
+                if status == "SUPERSEDED" and superseded_by is None:
+                    status = "ACTIVE"
 
                 standards_rows.append((
                     is_code,

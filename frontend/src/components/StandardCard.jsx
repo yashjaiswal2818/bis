@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldAlert, CheckCircle2, AlertTriangle, FileText, Copy, Check, Info, Award, Zap, ShieldCheck } from 'lucide-react';
 
-export default function StandardCard({ hit, onOpenGeMClause, onViewDetails, displayLanguage = 'en' }) {
+export default function StandardCard({ hit, onOpenGeMClause, onViewDetails, displayLanguage = 'en', onSearch }) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [showOriginalEnglish, setShowOriginalEnglish] = useState(false);
 
@@ -61,6 +61,43 @@ export default function StandardCard({ hit, onOpenGeMClause, onViewDetails, disp
     return 'Related Parameter Match';
   };
 
+  const renderRelevanceMeter = () => {
+    let bars = 1;
+    let color = '#9ca3af'; // gray-400
+    let label = 'Related to your search';
+    
+    if (hit.confidence === 'HIGH') {
+      bars = 3;
+      color = '#10b981'; // emerald-500
+      label = 'High relevance';
+    } else if (hit.confidence === 'MEDIUM') {
+      bars = 2;
+      color = '#f59e0b'; // amber-500
+      label = 'Moderate relevance';
+    }
+
+    if (isLocalized && REGIONAL_MATCH_LABELS[displayLanguage]) {
+      return REGIONAL_MATCH_LABELS[displayLanguage];
+      label = REGIONAL_MATCH_LABELS[displayLanguage];
+    }
+    if (hit.confidence === 'HIGH') return 'High Semantic Match';
+    if (hit.confidence === 'MEDIUM') return 'Moderate Semantic Match';
+    return 'Related Parameter Match';
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', padding: '4px 8px', borderRadius: '12px', border: '1px solid #e2e8f0' }} title={`Confidence: ${hit.confidence}`}>
+        <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '12px' }}>
+          <div style={{ width: '4px', height: '6px', backgroundColor: bars >= 1 ? color : '#e5e7eb', borderRadius: '1px' }} />
+          <div style={{ width: '4px', height: '9px', backgroundColor: bars >= 2 ? color : '#e5e7eb', borderRadius: '1px' }} />
+          <div style={{ width: '4px', height: '12px', backgroundColor: bars >= 3 ? color : '#e5e7eb', borderRadius: '1px' }} />
+        </div>
+        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginLeft: '6px' }}>
+          {label}
+        </span>
+      </div>
+    );
+  };
+
   const isActive = hit.status === 'ACTIVE';
   const isHallmarking = qcoDetails && (qcoDetails.scheme_type?.includes('Scheme-IV') || qcoDetails.scheme_type?.includes('Hallmark'));
   const isCRS = qcoDetails && (qcoDetails.scheme_type?.includes('Scheme-II') || qcoDetails.scheme_type?.includes('CRS'));
@@ -84,6 +121,7 @@ export default function StandardCard({ hit, onOpenGeMClause, onViewDetails, disp
           <span className={`badge ${hit.confidence === 'HIGH' ? 'badge-emerald' : 'badge-amber'}`}>
             🧠 {getRelevanceLabel()}
           </span>
+          {renderRelevanceMeter()}
           {hit.schedule_category && (
             <span className="badge badge-category">{hit.schedule_category}</span>
           )}
@@ -106,17 +144,57 @@ export default function StandardCard({ hit, onOpenGeMClause, onViewDetails, disp
             </button>
           )}
 
-          {isActive ? (
-            <span
-              className="badge badge-neutral"
-              title={`Present in the registry snapshot. Edition currency not verified against BIS.${hit.reaffirmation_year ? ` Reaffirmation year recorded: ${hit.reaffirmation_year}.` : ''}`}
-            >
-              <span>In registry</span>
-            </span>
-          ) : (
+          {(() => {
+            const ec = hit.edition_context;
+            if (!ec) {
+              return isActive ? (
+                <span className="badge badge-neutral" title="Present in the registry snapshot."><span>In registry</span></span>
+              ) : null;
+            }
+            if (ec.state === 'later_edition_exists') {
+              return (
+                <button 
+                  className="badge badge-amber" 
+                  title="Derived from editions present in the registry snapshot. Not a BIS currency determination — confirm at standardsbis.bsbedge.com."
+                  onClick={(e) => { e.stopPropagation(); if (onSearch) onSearch(ec.later_edition_available); }}
+                  style={{ cursor: 'pointer', border: 'none', background: '#fef3c7', color: '#92400e' }}
+                >
+                  <span>Later edition in registry: {ec.later_edition_available}</span>
+                  <span>Later edition in registry: <span style={{ fontFamily: 'var(--font-mono)' }}>{ec.later_edition_available}</span></span>
+                </button>
+              );
+            }
+            if (ec.state === 'restructured_edition_exists') {
+              return (
+                <button 
+                  className="badge badge-amber" 
+                  title="Derived from editions present in the registry snapshot. Not a BIS currency determination — confirm at standardsbis.bsbedge.com."
+                  onClick={(e) => { e.stopPropagation(); if (onSearch) onSearch(ec.later_edition_available); }}
+                  style={{ cursor: 'pointer', border: 'none', background: '#fef3c7', color: '#92400e' }}
+                >
+                  <span>Restructured as: <span style={{ fontFamily: 'var(--font-mono)' }}>{ec.later_edition_available}</span></span>
+                </button>
+              );
+            }
+            if (ec.state === 'latest_in_registry') {
+              return (
+                <span className="badge badge-neutral" title="Derived from editions present in the registry snapshot. Not a BIS currency determination — confirm at standardsbis.bsbedge.com.">
+                  <span>Latest edition in registry</span>
+                </span>
+              );
+            }
+            return (
+              <span className="badge badge-neutral" title="Derived from editions present in the registry snapshot. Not a BIS currency determination — confirm at standardsbis.bsbedge.com.">
+                <span>Edition not recorded</span>
+              </span>
+            );
+          })()}
+
+          {!isActive && (
             <span className="badge badge-amber" title="Recorded as superseded in the registry snapshot">
               <AlertTriangle size={12} />
               <span>Superseded {hit.superseded_by ? `(by ${hit.superseded_by})` : ''}</span>
+              <span>Superseded {hit.superseded_by ? <>(by <span style={{ fontFamily: 'var(--font-mono)' }}>{hit.superseded_by}</span>)</> : ''}</span>
             </span>
           )}
 

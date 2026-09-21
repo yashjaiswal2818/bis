@@ -83,3 +83,15 @@ export async function judgeSearch(query, topK = 5) {
   }
   return await res.json();
 }
+
+export async function exportPdfReport(auditResult, filename) {
+  const res = await fetch(`${API_BASE}/api/reports/export/pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audit_result: auditResult, filename: filename }),
+  });
+  if (!res.ok) {
+    throw new Error(`PDF Export failed with status ${res.status}`);
+  }
+  return await res.blob();
+}

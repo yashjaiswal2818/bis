@@ -43,6 +43,10 @@ class ProcessedQuery:
 
 # Conversational prefixes and inquiry boilerplate to strip (English, Hindi, and Natural Language)
 NOISE_PREFIX_PATTERNS = [
+    # BoQ / Line Item prefixes
+    r"^(?:item\s+no\.?\s*\d+|item\s*\d+|sl\.?\s*no\.?\s*\d+|s\.?no\.?\s*\d+|sr\.?\s*no\.?\s*\d+)\b[:\.\-)]*\s*",
+    r"^\d+[\.\)]\s*",
+
     # English Natural Language Inquiries
     r"^(?:hello|hi|hey|good morning|good afternoon|good evening|please|kindly|can you|could you)\b[\s,]*",
     r"^(?:which|what)\s+(?:bis\s+|indian\s+)?(?:standard|specification|code|norm|is\s+code)?\s+(?:should|do|can|must)\s+(?:we|i|one)\s+(?:follow|use|refer\s+to|apply)\s+(?:for|to)?\s*",

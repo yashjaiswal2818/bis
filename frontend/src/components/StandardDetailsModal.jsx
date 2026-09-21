@@ -172,6 +172,7 @@ export default function StandardDetailsModal({ isOpen, onClose, standard, onOpen
                   )}
                   <span className="badge badge-emerald">
                     Published Edition: {standard.is_code}
+                    Published Edition: <span style={{ fontFamily: 'var(--font-mono)' }}>{standard.is_code}</span>
                   </span>
                   {standard.reaffirmation_year && (
                     <span className="badge badge-blue">Reaffirmed Year: {standard.reaffirmation_year}</span>
@@ -214,6 +215,7 @@ export default function StandardDetailsModal({ isOpen, onClose, standard, onOpen
                 <div className="modal-section-title">GFR 2017 Rule 144 Conformance</div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   Under Rule 144 of the General Financial Rules (2017), government entities must base technical specifications on national standards (BIS). Citing <strong>{standard.is_code}</strong> ensures non-restrictive competitive bidding while legally securing certified quality.
+                  Under Rule 144 of the General Financial Rules (2017), government entities must base technical specifications on national standards (BIS). Citing <strong style={{ fontFamily: 'var(--font-mono)' }}>{standard.is_code}</strong> ensures non-restrictive competitive bidding while legally securing certified quality.
                 </p>
               </div>
             </div>

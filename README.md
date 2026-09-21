@@ -101,6 +101,7 @@ User Query / Government Tender (PDF/CSV) / Hinglish / Regional Indic
 - Handles regional Indian language **input** (**Hindi, Marathi, Tamil, Telugu, Bengali, Gujarati, Kannada**) and conversational Hinglish (`"RCC chhat ke water leakage ko rokne ke liye waterproofing compound"`, `"Makaan aur building slab dhalai Fe 500D grade sariya"`).
 - Normalizes Devanagari numerals (`०-९`) to standard Arabic digits.
 - **Output** translation is curated for 12 standards only; all other titles render in English and are marked as untranslated. See [Known Limitations → Multilingual output](#multilingual-output).
+- **Output** translation is curated for 12 standards only. See [Known Limitations → Multilingual output](#multilingual-output).
 
 ### 5. Mandatory Quality Control Order (QCO) Enforcement
 - Cross-references candidate standards with gazetted Quality Control Orders issued under the BIS Act, 2016.

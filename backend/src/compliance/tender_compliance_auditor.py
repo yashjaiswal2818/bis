@@ -262,6 +262,7 @@ class TenderComplianceAuditor:
         # Check for exact base code or number with IS prefix (e.g. "IS 694", "IS-694", "IS: 694", "IS694")
         if code_num:
             is_pattern = re.compile(rf"\bIS\s*[:\-–]?\s*{re.escape(code_num)}\b", re.IGNORECASE)
+            is_pattern = re.compile(rf"\bI\.?S\.?\s*[:\-–]?\s*{re.escape(code_num)}\b", re.IGNORECASE)
             match = is_pattern.search(clause_text)
             if match:
                 is_code_missing = False
@@ -279,6 +280,7 @@ class TenderComplianceAuditor:
                 alt_num_match = re.search(r"\d+", alt_base)
                 if alt_num_match:
                     alt_pat = re.compile(rf"\bIS\s*[:\-–]?\s*{re.escape(alt_num_match.group(0))}\b", re.IGNORECASE)
+                    alt_pat = re.compile(rf"\bI\.?S\.?\s*[:\-–]?\s*{re.escape(alt_num_match.group(0))}\b", re.IGNORECASE)
                     alt_match = alt_pat.search(clause_text)
                     if alt_match:
                         is_code_missing = False
@@ -399,25 +401,18 @@ class TenderComplianceAuditor:
         # 5. Four-state audit status. Reuses the retrieval confidence band produced by
         # get_confidence_band() — no second threshold is introduced here.
         match_confidence = _top_confidence(top_std)
-        if any_mark_missing:
-            # QCO_REQUIRED is checked before the confidence gate on purpose. A missed mandatory
-            # certification is a false negative on a legal obligation — the most costly error this
-            # tool can make — so a statutory gap is surfaced even when the match is below HIGH.
-            # The reason line states the confidence so the officer can weigh it.
-            audit_status = "QCO_REQUIRED"
-            caveat = (
-                "" if match_confidence == "HIGH"
-                else f" Match confidence is {match_confidence or 'unranked'}, so confirm the standard applies."
-            )
-            audit_status_reason = (
-                f"{rec_code} carries a mandatory certification ({scheme_type or 'statutory QCO'}) "
-                f"that the item text does not reference. {missing_mark_label}.{caveat}"
-            )
-        elif match_confidence != "HIGH":
+        if match_confidence != "HIGH":
             audit_status = "NO_CONFIDENT_MATCH"
             audit_status_reason = (
                 f"Best match {rec_code} is {match_confidence or 'unranked'} confidence, not HIGH. "
                 "Not assessed — verify manually."
+            )
+        elif any_mark_missing:
+            # A missed mandatory certification is a false negative on a legal obligation.
+            audit_status = "QCO_REQUIRED"
+            audit_status_reason = (
+                f"{rec_code} carries a mandatory certification ({scheme_type or 'statutory QCO'}) "
+                f"that the item text does not reference. {missing_mark_label}."
             )
         elif is_code_missing:
             audit_status = "STANDARD_SUGGESTED"

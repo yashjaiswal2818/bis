@@ -176,6 +176,7 @@ class TenderDocumentParser:
                 continue
 
             # 1. PyMuPDF Table Extraction (vector/grid tables)
+            tables_extracted = False
             if hasattr(page, "find_tables"):
                 try:
                     tables = page.find_tables()
@@ -184,6 +185,7 @@ class TenderDocumentParser:
                         if not table_data or len(table_data) < 2:
                             continue
 
+                        tables_extracted = True
                         headers = [str(c).strip().lower() if c else "" for c in table_data[0]]
                         desc_col_idx = -1
                         qty_col_idx = -1
@@ -218,6 +220,20 @@ class TenderDocumentParser:
                                             })
                 except Exception:
                     pass
+
+            if not tables_extracted:
+                blocks = page.get_text("blocks")
+                for block in blocks:
+                    block_text = block[4].strip() if len(block) > 4 and isinstance(block[4], str) else ""
+                    if not block_text or len(block_text) < 10 or is_pure_boilerplate(block_text):
+                        continue
+                    cleaned_block = " ".join(block_text.split()).strip()
+                    if re.match(r"^(?:item\s*(?:no\.?)?\s*\d+|sl\.?\s*no\.?\s*\d+|s\.?no\.?\s*\d+|sr\.?\s*no\.?\s*\d+|\d+[\.\)])", cleaned_block, re.IGNORECASE):
+                        boq_items.append({
+                            "description": cleaned_block,
+                            "quantity": "1",
+                            "unit": "Nos",
+                        })
 
         combined_text = "\n\n".join(full_document_pages)
 

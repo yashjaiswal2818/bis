@@ -26,6 +26,7 @@ from src.database.sqlite_manager import (
     get_standard_details,
     normalize_is_code,
 )
+from src.compliance.edition_resolver import EditionResolver
 from src.retrieval.bge_multilingual_embedder import encode_query_cached, get_embedder
 from src.retrieval.bm25_lexical_indexer import BM25LexicalIndex
 from src.retrieval.cross_encoder_reranker import auto_clamp_rerank_pool, get_reranker, rerank_pairs
@@ -58,6 +59,7 @@ class RecommendedStandard:
     reaffirmation_year: int | None = None
     amendments_count: int = 0
     is_government_schedule_match: bool = False
+    edition_context: dict | None = None
     schedule_item_title: str | None = None
     schedule_category: str | None = None
     matched_grade: str | None = None
@@ -182,6 +184,8 @@ class HybridSearchOrchestrator:
         self.rerank_k = auto_clamp_rerank_pool(rerank_k)
         self.final_k = final_k
         self.rrf_c = rrf_c
+        
+        self.edition_resolver = EditionResolver.get_instance()
 
         self.dense_index = FAISSDenseIndex.load(index_dir)
         self.bm25_index = BM25LexicalIndex.load(index_dir / "bm25_index.pkl")
@@ -427,6 +431,23 @@ class HybridSearchOrchestrator:
             item for item in reranked
             if item[2] >= 0.38 or item[0] in direct_matches
         ]
+        
+        # Suppress undated records if a dated version of the same base code is present
+        dated_base_codes = set()
+        for r_code, _, _ in reranked:
+            if re.search(r':\s*\d{4}', r_code):
+                dated_base_codes.add(r_code.split(":")[0].strip().upper())
+                
+        filtered_reranked = []
+        for item in reranked:
+            r_code = item[0]
+            has_date = bool(re.search(r':\s*\d{4}', r_code))
+            base_code = r_code.split(":")[0].strip().upper()
+            if not has_date and base_code in dated_base_codes:
+                continue
+            filtered_reranked.append(item)
+        reranked = filtered_reranked
+
         if not reranked:
             print(">> [RELEVANCE GATE] All candidate matches dropped below minimum confidence floor.")
             print("=" * 80 + "\n")
@@ -492,6 +513,7 @@ class HybridSearchOrchestrator:
                 reaffirmation_year=details.get("reaffirmation_year"),
                 amendments_count=details.get("amendments_count", 0),
                 is_government_schedule_match=is_gov_match,
+                edition_context=self.edition_resolver.resolve(code),
                 schedule_item_title=schedule_item_title,
                 schedule_category=schedule_category,
                 matched_grade=matched_grade,

@@ -24,7 +24,7 @@ def test_compliance_engine():
     # Case A: Gold jewellery with NO standard and NO hallmark
     c_gold_missing = auditor.audit_clause(
         "Supply of 22k gold medals for sports award ceremony",
-        [{"is_code": "IS 1417: 2016", "title": "Gold and Gold Alloys, Jewellery/Artefacts"}]
+        [{"confidence": "HIGH", "is_code": "IS 1417: 2016", "title": "Gold and Gold Alloys, Jewellery/Artefacts"}]
     )
     print("\n[Case A] Gold Jewellery (Omitted Citations):")
     print(f"  - is_fine: {c_gold_missing.is_fine}")
@@ -40,7 +40,7 @@ def test_compliance_engine():
     # Case B: Gold jewellery conforming to IS 1417 with BIS Hallmark & HUID
     c_gold_fine = auditor.audit_clause(
         "Supply of 22k gold medals conforming to IS 1417 with mandatory BIS 6-digit HUID hallmarking",
-        [{"is_code": "IS 1417: 2016", "title": "Gold and Gold Alloys, Jewellery/Artefacts"}]
+        [{"confidence": "HIGH", "is_code": "IS 1417: 2016", "title": "Gold and Gold Alloys, Jewellery/Artefacts"}]
     )
     print("\n[Case B] Gold Jewellery (Compliant with Standard & Hallmark):")
     print(f"  - is_fine: {c_gold_fine.is_fine}")
@@ -53,7 +53,7 @@ def test_compliance_engine():
     # Case C: Power cables conforming to IS 694 with ISI Mark
     c_cables_fine = auditor.audit_clause(
         "Supply of PVC insulated copper power cables conforming to IS 694 bearing mandatory ISI Mark",
-        [{"is_code": "IS 694: 2010", "title": "PVC Insulated Cables"}]
+        [{"confidence": "HIGH", "is_code": "IS 694: 2010", "title": "PVC Insulated Cables"}]
     )
     print("\n[Case C] Power Cables (Compliant with Standard & ISI Mark):")
     print(f"  - is_fine: {c_cables_fine.is_fine}")
