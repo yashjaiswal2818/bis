@@ -51,7 +51,7 @@ def run_benchmark():
             headers={'Content-Type': 'application/json'}
         )
         try:
-            resp = urllib.request.urlopen(req, timeout=30)
+            resp = urllib.request.urlopen(req, timeout=120)
             data = json.loads(resp.read().decode('utf-8'))
             hits = data.get("results", [])
             total_returned += 1
