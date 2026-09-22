@@ -210,8 +210,16 @@ This automatically verifies indexes, starts the FastAPI backend on `http://127.0
 From the `backend/` directory:
 ```bash
 cd backend
+OMP_NUM_THREADS=1 KMP_DUPLICATE_LIB_OK=TRUE uvicorn src.api.fastapi_application:app --host 127.0.0.1 --port 8000 --reload
+```
+On Windows (cmd):
+```cmd
+cd backend
+set OMP_NUM_THREADS=1
+set KMP_DUPLICATE_LIB_OK=TRUE
 uvicorn src.api.fastapi_application:app --host 127.0.0.1 --port 8000 --reload
 ```
+**Both env vars are required, not optional** — see Troubleshooting §4 below. Omitting them was previously the documented command here and reproducibly crashes the server on its first `/search` request.
 
 Once started, explore the interactive documentation:
 - **Swagger UI**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
@@ -352,14 +360,13 @@ Run evaluation across the official benchmark:
 python backend/eval_script.py backend/datasets/national_test_results.json
 ```
 
-**Verified Benchmark Results:**
+**Verified Benchmark Results** (measured live via `backend/bench_live.py` — see [`docs/SYSTEM_ANALYSIS.md`](../docs/SYSTEM_ANALYSIS.md) Section 4 for the full run; n=25 across both files, self-authored, not a general accuracy claim):
 | Metric | Baseline Target | **System Performance** |
 | :--- | :---: | :---: |
-| **Hit Rate @ 1** | $\ge 80\%$ | **100.0% (15/15)** |
-| **Hit Rate @ 3** | $\ge 80\%$ | **100.0% (15/15)** |
-| **Mean Reciprocal Rank (MRR @ 5)** | $\ge 0.70$ | **1.0000 (Perfect)** |
-| **Public Test Set Hit Rate** | $\ge 80\%$ | **100.0% (10/10)** |
-| **Complex Queries Stress Test** | — | **100.0% (20/20 Passed)** |
+| **Hit Rate @ 1 — National set** | $\ge 80\%$ | **86.7% (13/15)** |
+| **Hit Rate @ 1 — Public set** | $\ge 80\%$ | **80.0% (8/10)** |
+| **Hit Rate @ 1 — Combined** | $\ge 80\%$ | **84.0% (21/25)**, or 88.0% (22/25) excluding one outdated test label — see main `README.md` |
+| **Complex Queries Stress Test** (`test_complex_scenarios.py`, not re-verified this session) | — | **Hit@1 12/18, Hit@3 14/18 on retrieval scenarios; 2/2 on out-of-domain probes** — per main `README.md`'s own table; this file previously stated a contradictory 100.0% (20/20) that did not match it |
 
 ---
 
@@ -379,3 +386,18 @@ If another service is using port 8000, specify a different port:
 ```bash
 uvicorn src.api.fastapi_application:app --host 127.0.0.1 --port 8001
 ```
+
+### 4. Server Crashes Silently on the First `/search` Request (No Traceback)
+This is a real, reproduced issue, not a hypothetical. FAISS (`faiss-cpu`) and PyTorch each bundle
+their own OpenMP runtime, and letting both run multi-threaded in the same process crashes on the
+first call that actually does inference — the server process disappears mid-request with no Python
+traceback, only a `multiprocessing/resource_tracker` "leaked semaphore" warning. Reproduced 2/2 on a
+clean process start when launching exactly as Option B above used to be documented (without the env
+vars). Full investigation, including an RSS trace across the crash: `docs/SYSTEM_ANALYSIS.md` Section 4.
+
+**Fix:** set both `OMP_NUM_THREADS=1` and `KMP_DUPLICATE_LIB_OK=TRUE` before starting uvicorn (now
+included in Option B above). `start.py` / `start.bat` already set these automatically — if you're
+running the Unified Application Launcher (Option A), you are not affected. The fix costs latency:
+measured this session at ~10s for a cold first query, settling to ~1.1-1.2s after repeated identical
+queries (`docs/SYSTEM_ANALYSIS.md` Section 4). If you have a fix for the underlying OpenMP conflict
+that doesn't require single-threading, it would remove that cost.

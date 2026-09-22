@@ -44,15 +44,13 @@ def auto_clamp_rerank_pool(requested_k: int) -> int:
                 return min(requested_k, 4)
         else:
             # CPU-Only environment (e.g. Intel Core i3/i5/i7)
-            # Pool=6 keeps total per-query latency safely around 2.5-3.5s (<5s rulebook target)
-            clamped = min(requested_k, 6)
-            # CPU-Only environment
-            # Pool=3 keeps total per-query latency safely around 3.5-4.5s (<5s rulebook target)
-            clamped = min(requested_k, 3)
-            return clamped
+            # Pool=3 keeps total per-query latency safely around 3.5-4.5s (<5s rulebook target).
+            # Measured live (docs/SYSTEM_ANALYSIS.md Section 3): auto_clamp_rerank_pool(25) == 3
+            # on this hardware with no RERANK_K override -- 22 of 25 fused candidates never reach
+            # the cross-encoder.
+            return min(requested_k, 3)
     except Exception:
         return min(requested_k, 6)
-        return min(requested_k, 3)
 
 
 def get_reranker() -> CrossEncoder:

@@ -5,23 +5,27 @@
 > Engineered for real-time tender specification auditing, mandatory Quality Control Order (QCO) enforcement, automated Government e-Marketplace (GeM) procurement clause generation, and cross-encoder precision search.
 
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
-[![Hit@1 Accuracy](https://img.shields.io/badge/Hit%401-100.0%25-brightgreen)](backend/datasets/national_test_results.json)
-[![MRR@5](https://img.shields.io/badge/MRR%405-1.0000-brightgreen)](backend/datasets/national_test_results.json)
+[![Hit@1 Accuracy](https://img.shields.io/badge/Hit%401-84.0%25_(n%3D25)-yellow)](docs/SYSTEM_ANALYSIS.md)
 [![Offline Capable](https://img.shields.io/badge/Offline-first-orange)]()
 
 ---
 
 ## Benchmark Performance Highlights
 
-Our **Domain-Adapted Local Corrective RAG (CRAG)** architecture achieves **100% Hit@1 and 1.0000 MRR@5** on the two official benchmark test sets shipped in this repo. Performance on harder, out-of-benchmark phrasings is lower — see the measured stress-test table further down.
+Measured live against a fresh backend instance (`backend/bench_live.py`, see [`docs/SYSTEM_ANALYSIS.md`](docs/SYSTEM_ANALYSIS.md) Section 4 for the full run): **21/25 (84.0%) top-1 accuracy, strict**, on the two self-authored benchmark files shipped in this repo (n=25 — this is not a general accuracy claim, and both files were written by the same team that built the system).
 
-| Benchmark / Evaluation Suite | Queries Tested | Hit Rate @ 1 | Hit Rate @ 3 | MRR @ 5 | Accuracy |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Official National Benchmark** (`national_evaluation_test_set.json`) | 15 | **100.0% (15/15)** | **100.0% (15/15)** | **1.0000** | **100%** |
-| **Public Evaluation Test Set** (`public_test_set.json`) | 10 | **100.0% (10/10)** | **100.0% (10/10)** | **1.0000** | **100%** |
-| **Out-of-Domain Guard** (`backend/test_wrong_queries.py`) | 4 | — | — | — | **4/4 rejected (0 hits)** |
+Of the 4 misses, one (`PUB-03`) is an outdated test label, not a retrieval error: the test expects `IS 458: 2003`, but the registry now also contains `IS 458: 2021` — the current edition of the exact same standard ("Precast Concrete Pipes") — and the system correctly recommends the current one. We do not edit test sets to raise the score, so it still counts as a strict miss. **Excluding that one label: 22/25 (88.0%).**
 
-The out-of-domain guard is measured on a 4-probe set (gibberish, food, an invalid IS number, a recipe); that sample is too small to state a rejection rate. It is not a blanket guarantee: an aerospace-materials probe (`NASA spacecraft thermal protection tile bonding adhesive`) is **not** rejected — it returns 3 results, all banded MEDIUM with `match_quality: uncertain`, which is the intended behaviour for a near-domain query.
+The other 3 misses are real: two of them (`NAT-12`, `NAT-14`) are the system confusing closely-related sibling standards at HIGH or maximum (0.999) confidence — e.g. recommending the *stainless-steel* welding-electrode standard for a *carbon-steel* electrode query. The fourth (`PUB-04`) is a wrong Part number on the right base standard. See `docs/SYSTEM_ANALYSIS.md` Section 4 for the full breakdown, including the full score distribution and confidence bands.
+
+| Benchmark / Evaluation Suite | Queries Tested | Hit@1 (strict) | Hit@1 (excl. 1 stale label) |
+| :--- | :---: | :---: | :---: |
+| **Official National Benchmark** (`national_evaluation_test_set.json`) | 15 | **13/15 (86.7%)** | 13/15 (86.7%) |
+| **Public Evaluation Test Set** (`public_test_set.json`) | 10 | **8/10 (80.0%)** | 9/10 (90.0%) |
+| **Combined** | 25 | **21/25 (84.0%)** | **22/25 (88.0%)** |
+| **Out-of-Domain Guard** (`backend/bench_live.py`, 8 probes) | 8 | — | 5/8 cleanly rejected; 3/8 returned MEDIUM-confidence false positives (see `docs/SYSTEM_ANALYSIS.md` Section 4) |
+
+The out-of-domain guard is not a blanket guarantee. A near-domain aerospace-materials probe is not rejected — it returns results banded MEDIUM with `match_quality: uncertain`, the intended behaviour for a near-domain query. This session's own 8-probe run also found 2 genuinely out-of-domain queries (a food-recipe query, an income-tax-filing query) returning MEDIUM-confidence results rather than a clean rejection — see `docs/SYSTEM_ANALYSIS.md` for the exact probes and results.
 
 ---
 
@@ -150,6 +154,22 @@ Measured by [`backend/test_complex_scenarios.py`](backend/test_complex_scenarios
 Every figure below was measured against the shipped `backend/data/standards_master.db`. These are
 disclosed rather than fixed because closing them needs data sources we do not have, not more code.
 
+### Scope text is templated, not extracted, for 98.2% of the registry
+
+**32,951 of 33,564 rows (98.2%)** carry a generated sentence as their `scope` field, not text
+extracted from the standard itself: `"Indian Standard specification {code} covering requirements,
+dimensions, technical properties, sampling, and quality criteria for {title} under {division}."`
+(written by `harvest_national_catalog.py:242-256` at ingestion time, from the title and division
+alone — never from the standard's actual body text). Only the remaining 613 rows have real,
+non-template scope content, carried over from an earlier hand-curated ingestion pass.
+
+This matters beyond the `scope` field on its own: the rationale engine quotes this text as what the
+standard "covers," and the CRAG knowledge-strip extractor (Section 3 of `docs/SYSTEM_ANALYSIS.md`)
+selects its highlighted sentence from it. For 98.2% of results, both of those are working from a
+generated placeholder, not the standard's own scope clause. Closing this requires extracting real
+scope text from the standards themselves (licensed full text or a properly parsed source), not a
+change to the rationale or knowledge-strip logic, which is working correctly on the input it's given.
+
 ### Edition currency
 
 The registry is a **snapshot**, not a live feed. It was harvested from the archive.org `gov.in.is`
@@ -166,7 +186,7 @@ the registry* but not linked to the older one:
 | `IS 694: 1990` | ACTIVE, `superseded_by` NULL | `IS 694: 2010` |
 | `IS 12269: 1987` | ACTIVE, `superseded_by` NULL | `IS 12269: 2013` |
 
-Supersession data covers **16 of 33,748 records (0.05%)**, and **11 of those 16 are wrong** — a
+Supersession data covers **16 of 33,564 records (0.05%)**, and **11 of those 16 are wrong** — a
 prefix-matching bug in the seeder mapped unrelated codes onto `IS 269: 2015`, so
 `IS 2692: 1989` (Ferrules for Water Services), `IS 2693: 1989` (Bush Type Flexible Coupling) and
 nine `IS 1269x` forestry, shipbuilding and small-tools standards all claim to be superseded by a
@@ -181,7 +201,7 @@ at [standardsbis.bsbedge.com](https://standardsbis.bsbedge.com) before citing an
 
 ### Allied standards coverage
 
-**2,404 edges across 157 source codes — 0.47% of the 33,748-record registry.** The other 99.5% of
+**2,404 edges across 157 source codes — 0.47% of the 33,564-record registry.** The other 99.5% of
 standards return no allied results at all.
 
 The edges are **hand-authored**, not parsed from the normative-reference clauses of the standards
@@ -203,7 +223,7 @@ requirement from a tender. Always confirm QCO applicability against the current 
 **Input** is genuinely multilingual — BGE-M3 embeds Hindi, Marathi, Tamil, Telugu, Bengali,
 Gujarati, Kannada and Hinglish queries directly, and query-side handling is real.
 
-**Output translation is curated for 12 of 33,748 standards** (`CURATED_LOCALIZED_STANDARDS` in
+**Output translation is curated for 12 of 33,564 standards** (`CURATED_LOCALIZED_STANDARDS` in
 `backend/src/localization/multilingual_engine.py`), across 7 languages. For every other standard the
 title is the official English text. Those titles are now explicitly marked as untranslated in the
 regional view rather than being wrapped in regional-language framing — e.g. in Hindi:

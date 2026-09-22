@@ -54,6 +54,70 @@ TECHNICAL_SIGNALS = [
     r"\bswitch\b", r"\bsocket\b", r"\bearthing\b", r"\binsulat(?:ed|ion)\b",
 ]
 
+# --- Technical-substance selection scoring ---------------------------------------------
+# Used only to RANK items that have already survived is_pure_boilerplate() -- it never
+# drops an item, it only decides which of the survivors are worth keeping when the [:20]
+# cap below has to choose. This replaces document-position order (which real tenders
+# front-load with administrative/eligibility text) with a score for how much concrete
+# technical or procurement substance a chunk actually carries.
+#
+# +2 for a material/product noun; +2 for a quantity with a construction/BOQ unit
+# (cum, sqm, kg, MT, nos, running metre); +2 for citing an IS code; +2 for a grade or
+# dimension (M25, Fe 500, 53 grade, mm, kV). -3 per administrative-keyword match
+# (EMD, earnest money, eligibility, bid security, tender fee, affidavit, undertaking,
+# GST registration, turnover, completion certificate, arbitration, penalty clause).
+_MATERIAL_PRODUCT_NOUNS = re.compile(
+    r"\b(cement|concrete|steel|tmt|rebar|reinforcement|cables?|wires?|conduit|pipes?|"
+    r"fittings?|valves?|pumps?|motors?|transformers?|switchgear|panels?|breakers?|mcb|"
+    r"mccb|paint|enamel|glass|tiles?|bricks?|blocks?|aggregate|bitumen|asphalt|sand|"
+    r"gravel|timber|plywood|door|window|luminaires?|lamps?|fixtures?|sanitary|fans?|"
+    r"earthing|insulat(?:ed|ion|or)|generator|battery|solar|inverter|helmet|hallmark|"
+    r"jewellery|wire mesh|distribution board|substation)\b",
+    re.IGNORECASE,
+)
+_QUANTITY_UNIT_PATTERN = re.compile(
+    r"\b\d+(?:\.\d+)?\s*(cum|sq\.?\s?m(?:etres?)?|sqm|kgs?|mt|tonnes?|nos\.?|"
+    r"running\s+met(?:re|er)s?|rmt|litres?|ltr)\b",
+    re.IGNORECASE,
+)
+_GRADE_DIMENSION_PATTERN = re.compile(
+    r"\bm\s?-?\d{2,3}\b|\bfe\s?\d{3}d?\b|\b\d{2,3}\s*grade\b|\b\d+(?:\.\d+)?\s*mm\b|\b\d+\s*kv\b",
+    re.IGNORECASE,
+)
+# Deliberately case-sensitive (capital "IS") to avoid matching the copula "is" followed
+# by an unrelated number, e.g. "the estimated cost is 617136" in administrative prose.
+_IS_CODE_CITATION_PATTERN = re.compile(r"\bIS[\s:]*\d{2,6}\b")
+_ADMINISTRATIVE_KEYWORDS = re.compile(
+    r"\b(emd|earnest money|eligibility|bid security|tender fee|affidavit|undertaking|"
+    r"gst registration|turnover|completion certificate|arbitration|penalty clause)\b",
+    re.IGNORECASE,
+)
+
+
+def technical_relevance_score(text: str) -> int:
+    """Ranks an already-surviving chunk by technical/procurement substance. See the
+    scoring-rule comment above; this function implements it and nothing else -- it does
+    not filter, only scores, so callers decide what to do with the ranking."""
+    score = 0
+    if _MATERIAL_PRODUCT_NOUNS.search(text):
+        score += 2
+    if _QUANTITY_UNIT_PATTERN.search(text):
+        score += 2
+    if _IS_CODE_CITATION_PATTERN.search(text):
+        score += 2
+    if _GRADE_DIMENSION_PATTERN.search(text):
+        score += 2
+    score -= 3 * len(_ADMINISTRATIVE_KEYWORDS.findall(text))
+    return score
+
+
+def select_top_by_technical_score(items: list, limit: int, key=lambda x: x) -> list:
+    """Stable-sorts items by technical_relevance_score(key(item)) descending, then takes
+    the first `limit`. Stable sort preserves original document order among equal scores,
+    so this only reorders -- it never drops an item that the cap wouldn't already drop."""
+    ranked = sorted(items, key=lambda item: -technical_relevance_score(key(item)))
+    return ranked[:limit]
+
 
 @dataclass
 class TenderExtractionResult:
@@ -293,8 +357,8 @@ class TenderDocumentParser:
         return TenderExtractionResult(
             filename=filename,
             total_pages_or_rows=total_pages,
-            technical_clauses=deduped_chunks[:20],
-            boq_items=boq_items[:20],
+            technical_clauses=select_top_by_technical_score(deduped_chunks, 20),
+            boq_items=select_top_by_technical_score(boq_items, 20, key=lambda item: item.get("description", "")),
             has_scanned_pages=scanned_detected,
             warning_message=warning,
         )
