@@ -53,14 +53,14 @@ def run_benchmark():
         try:
             resp = urllib.request.urlopen(req, timeout=120)
             data = json.loads(resp.read().decode('utf-8'))
-            hits = data.get("results", [])
+            hits = data.get("hits", [])
             total_returned += 1
             if not hits:
                 incorrect += 1
                 continue
                 
             top_hit = hits[0]
-            top_score = top_hit.get("score", 0.0)
+            top_score = top_hit.get("rerank_score", 0.0)
             if top_score >= 0.999: clamp_count += 1
             if top_score < 0.75: below_75 += 1
             
