@@ -150,13 +150,9 @@ class CorrectiveEvaluator:
         """Assigns calibrated CRAG confidence verdict: 'HIGH', 'MEDIUM', or 'LOW'."""
         if is_direct_match or has_schedule_match:
             return "HIGH"
-        
+        from src.retrieval.hybrid_search_orchestrator import get_confidence_band
         effective_score = rerank_score + (0.5 * precision_alignment)
-        if effective_score >= 0.55:
-            return "HIGH"
-        elif effective_score >= 0.40:
-            return "MEDIUM"
-        return "LOW"
+        return get_confidence_band(effective_score)
 
     @classmethod
     def get_allied_fallback(
