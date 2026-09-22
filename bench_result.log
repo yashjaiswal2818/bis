@@ -1,0 +1,8 @@
+Running 25 benchmark queries...
+
+
+RESULTS:
+Score: 21/25 (84.0%)
+Clamped (0.999): 15
+Lowest Correct Score: 0.8589869351009295
+Below 0.75 Confidence: 0
