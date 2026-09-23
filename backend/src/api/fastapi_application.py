@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from src.compliance.tender_compliance_auditor import TenderComplianceAuditor
 from src.database.sqlite_manager import get_connection, get_standard_details
-from src.ingestion.tender_document_parser import TenderDocumentParser
+from src.ingestion.tender_document_parser import TenderDocumentParser, technical_relevance_score
 from src.llm.grounded_rationale_engine import GroundedRationaleEngine
 from src.integration.apisetu_gateway import APISetuBISGateway
 from src.localization.multilingual_engine import get_multilingual_representations
@@ -208,6 +208,31 @@ def judge_search(req: SearchRequest):
 # so the UI can say how many rows were left out. Override with TENDER_AUDIT_MAX_ITEMS.
 MAX_AUDIT_ITEMS = int(os.getenv("TENDER_AUDIT_MAX_ITEMS", "10"))
 
+# A clause that scores below zero matched an explicit administrative/eligibility keyword
+# (EMD, turnover, pre-qualification, arbitration, ...) -- see technical_relevance_score.
+# Running full retrieval against it anyway is how administrative and eligibility text
+# ended up with plausible-looking "Recommended Standards" next to it (e.g. JV
+# pre-qualification bullets matched against unrelated IS codes purely on stray word
+# overlap). Below this floor we skip retrieval entirely and say so honestly instead.
+TECHNICAL_RELEVANCE_FLOOR = 0
+_SKIP_REASON = (
+    "Reads as administrative or eligibility text, not a technical or product "
+    "specification -- not searched against the standards index."
+)
+
+
+def _search_if_technical(
+    orchestrator: HybridSearchOrchestrator, text: str, top_k: int = 3
+) -> tuple[list[Any], str | None]:
+    """Runs retrieval only if `text` clears the technical-relevance floor. Returns
+    (recs, skip_reason) -- skip_reason is set (and recs is []) when retrieval was never
+    run, so the caller can report an honest "not searched" reason via
+    TenderComplianceAuditor.audit_clause(..., skip_reason=...) instead of a genuine
+    empty-search result being confused with administrative text that was never searched."""
+    if technical_relevance_score(text) < TECHNICAL_RELEVANCE_FLOOR:
+        return [], _SKIP_REASON
+    return orchestrator.search(text[:300], top_k=top_k), None
+
 
 @app.post("/tender-audit")
 async def audit_tender_document(file: UploadFile = File(...)):
@@ -229,8 +254,8 @@ async def audit_tender_document(file: UploadFile = File(...)):
         items_parsed = len(extraction.boq_items)
         for item in extraction.boq_items[:MAX_AUDIT_ITEMS]:
             desc = item["description"]
-            recs = orchestrator.search(desc, top_k=3)
-            verdict = auditor.audit_clause(desc, recs)
+            recs, skip_reason = _search_if_technical(orchestrator, desc)
+            verdict = auditor.audit_clause(desc, recs, skip_reason=skip_reason)
             results.append({
                 "item_description": desc,
                 "quantity": item.get("quantity"),
@@ -261,8 +286,8 @@ async def audit_tender_document(file: UploadFile = File(...)):
         items_parsed = len(extraction.boq_items) + len(extraction.technical_clauses)
         for item in extraction.boq_items[:MAX_AUDIT_ITEMS]:
             desc = item["description"]
-            recs = orchestrator.search(desc[:300], top_k=3)
-            verdict = auditor.audit_clause(desc, recs)
+            recs, skip_reason = _search_if_technical(orchestrator, desc)
+            verdict = auditor.audit_clause(desc, recs, skip_reason=skip_reason)
             results.append({
                 "clause_text": desc[:200] + ("..." if len(desc) > 200 else ""),
                 "item_description": desc,
@@ -281,8 +306,8 @@ async def audit_tender_document(file: UploadFile = File(...)):
                 break
             if any(clause.lower() in (r.get("clause_text") or "").lower() for r in results):
                 continue
-            recs = orchestrator.search(clause[:300], top_k=3)
-            verdict = auditor.audit_clause(clause, recs)
+            recs, skip_reason = _search_if_technical(orchestrator, clause)
+            verdict = auditor.audit_clause(clause, recs, skip_reason=skip_reason)
             results.append({
                 "clause_text": clause[:200] + ("..." if len(clause) > 200 else ""),
                 "compliance_verdict": verdict.to_dict(),

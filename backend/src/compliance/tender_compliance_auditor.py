@@ -203,6 +203,7 @@ class TenderComplianceAuditor:
         self,
         clause_text: str,
         recommended_standards: list[Any],
+        skip_reason: str | None = None,
     ) -> ItemAuditVerdict:
         """Audits a single tender clause against recommended standards and QCO rules."""
         """Audits a single tender clause against recommended standards and QCO rules.
@@ -210,12 +211,18 @@ class TenderComplianceAuditor:
         Implements fail-closed design:
         - If no standards match: checks for exempt service (NOT_APPLICABLE), otherwise UNVERIFIED.
         - If standards match: verifies code citation, currency, and mandatory certification marks.
+
+        `skip_reason`, when set, means the caller deliberately never ran retrieval for this
+        clause (e.g. it scored below the technical-relevance floor and reads as administrative/
+        eligibility text) rather than running it and finding nothing. Callers pass an empty
+        `recommended_standards` list in that case; this keeps the reason honest about *why*
+        nothing was assessed instead of implying a search came up empty.
         """
         # Fail-closed: no retrieval hits at all. An item we could not assess has not passed,
         # so this reports NO_CONFIDENT_MATCH rather than the previous "Everything is fine".
         if not recommended_standards:
             exempt = self._is_exempt_service(clause_text)
-            reason = (
+            reason = skip_reason or (
                 "Reads as non-standardised labour or service; no Indian Standard matched."
                 if exempt
                 else "No Indian Standard matched above the relevance floor. Needs manual review."

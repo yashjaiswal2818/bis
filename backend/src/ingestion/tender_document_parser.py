@@ -45,8 +45,8 @@ TECHNICAL_SIGNALS = [
     r"\bswitchgear\b", r"\bconduit\b", r"\bsubstation\b", r"\bdistribution board\b",
     r"\blt\b", r"\bht\b", r"\bkv\b", r"\bvolts?\b", r"\bbreaker\b", r"\bmcb\b",
     r"\bmccb\b", r"\bpipe\b", r"\bfittings?\b", r"\bcement\b", r"\bsteel\b",
-    r"\breinforcement\b", r"\btmt\b", r"\bconcrete\b", r"\bis\s*:\s*\d+\b",
-    r"\bis\s+\d{3,5}\b", r"\bspecification\b", r"\bgrade\b", r"\bdiameter\b",
+    r"\breinforcement\b", r"\btmt\b", r"\bconcrete\b", r"\bis\s*[:-]\s*\d+\b",
+    r"\bis[\s-]+\d{3,5}\b", r"\bspecification\b", r"\bgrade\b", r"\bdiameter\b",
     r"\bthickness\b", r"\brating\b", r"\bcapacity\b", r"\bsupply of\b",
     r"\binstallation of\b", r"\berection of\b", r"\breplacement of\b",
     r"\blighting\b", r"\bluminaire\b", r"\bsanitary\b", r"\bvalves?\b",
@@ -81,15 +81,21 @@ _QUANTITY_UNIT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _GRADE_DIMENSION_PATTERN = re.compile(
-    r"\bm\s?-?\d{2,3}\b|\bfe\s?\d{3}d?\b|\b\d{2,3}\s*grade\b|\b\d+(?:\.\d+)?\s*mm\b|\b\d+\s*kv\b",
+    r"\bm\s?-?\d{2,3}\b|\bfe\s?\d{3}d?\b|\b\d{2,3}\s*grade\b|\b\d+(?:\.\d+)?\s*mm\b|\b\d+\s*kv\b|"
+    r"\b\d+(?:\.\d+)?\s*microns?\b",
     re.IGNORECASE,
 )
 # Deliberately case-sensitive (capital "IS") to avoid matching the copula "is" followed
 # by an unrelated number, e.g. "the estimated cost is 617136" in administrative prose.
-_IS_CODE_CITATION_PATTERN = re.compile(r"\bIS[\s:]*\d{2,6}\b")
+# Separator allows space, colon, OR hyphen -- real tenders cite standards as "IS 800",
+# "IS:800", and (as seen in an RCF NIT) "IS-800"/"IS-814" throughout an entire fabrication
+# annexure. Missing the hyphenated form silently zeroed out that annexure's IS-citation
+# score across dozens of genuinely technical clauses.
+_IS_CODE_CITATION_PATTERN = re.compile(r"\bIS[\s:-]*\d{2,6}\b")
 _ADMINISTRATIVE_KEYWORDS = re.compile(
     r"\b(emd|earnest money|eligibility|bid security|tender fee|affidavit|undertaking|"
-    r"gst registration|turnover|completion certificate|arbitration|penalty clause)\b",
+    r"gst registration|turnover|completion certificate|arbitration|penalty clause|"
+    r"pre-?qualification|qualifying factor|financial capability|cash flow)\b",
     re.IGNORECASE,
 )
 
@@ -256,7 +262,15 @@ class TenderDocumentParser:
                         unit_col_idx = -1
 
                         for idx, h in enumerate(headers):
-                            if any(w in h for w in ["work", "description", "item", "scope", "particular", "nomenclature", "specification"]):
+                            # "particulars"/"nomenclature" alone are too generic -- they head
+                            # all kinds of Indian government tables (schedules, eligibility
+                            # comparisons, financial revisions), not just technical/BOQ scope
+                            # columns. A corrigendum's "Particulars | Existing | Revised" date
+                            # table matched "particular" here and fed table rows like "Bid
+                            # Submission Closing" into technical_chunks as if they were scope
+                            # descriptions. Only match on terms that are specific to a work/
+                            # item description column.
+                            if any(w in h for w in ["work", "description", "item", "scope", "specification"]):
                                 if desc_col_idx == -1 or "work" in h or "description" in h:
                                     desc_col_idx = idx
                             if any(q in h for q in ["qty", "quantity"]):
@@ -268,7 +282,17 @@ class TenderDocumentParser:
                             for row in table_data[1:]:
                                 if desc_col_idx < len(row) and row[desc_col_idx]:
                                     val = " ".join(str(row[desc_col_idx]).split()).strip()
-                                    if len(val) > 10 and not is_pure_boilerplate(val):
+                                    # A genuine scope/description cell is a phrase or sentence,
+                                    # not a bare 2-3 word label (e.g. "Technical Bid Opening").
+                                    # Require either enough words to be a real description, or
+                                    # an explicit technical/quantity/IS-code signal.
+                                    has_substance = len(val.split()) >= 5 or bool(
+                                        _MATERIAL_PRODUCT_NOUNS.search(val)
+                                        or _QUANTITY_UNIT_PATTERN.search(val)
+                                        or _GRADE_DIMENSION_PATTERN.search(val)
+                                        or _IS_CODE_CITATION_PATTERN.search(val)
+                                    )
+                                    if len(val) > 10 and has_substance and not is_pure_boilerplate(val):
                                         technical_chunks.append(val)
                                         for d in decompose_composite_scope(val):
                                             if d not in technical_chunks:
@@ -348,17 +372,35 @@ class TenderDocumentParser:
                 seen.add(norm)
                 deduped_chunks.append(chunk)
 
+        selected_clauses = select_top_by_technical_score(deduped_chunks, 20)
+        selected_boq_items = select_top_by_technical_score(boq_items, 20, key=lambda item: item.get("description", ""))
+
         warning = None
         if scanned_detected:
             warning = "Notice: Some pages in this tender document appear to be scanned images. Text from digital pages was extracted."
         elif not deduped_chunks and not boq_items:
             warning = "Notice: Could not detect technical specification clauses. The uploaded document may only contain commercial/administrative conditions."
+        elif not any(
+            technical_relevance_score(item.get("description", "") if isinstance(item, dict) else item) > 0
+            for item in [*selected_clauses, *selected_boq_items]
+        ):
+            # Something was extracted, but nothing in it carries a real technical/product
+            # signal (a material noun, a quantity+unit, an IS-code citation, or a grade/
+            # dimension) -- e.g. a corrigendum revising eligibility criteria and bid dates.
+            # Running these through standard retrieval anyway produces plausible-looking but
+            # meaningless matches (coincidental keyword overlap), so say so plainly instead.
+            warning = (
+                "Notice: No genuine technical or product specification content was detected in this "
+                "document -- only administrative, financial, eligibility, or schedule-related text was "
+                "found. Any standards shown below are low-confidence keyword matches, not verified "
+                "technical requirements, and this document likely does not require BIS standard citation."
+            )
 
         return TenderExtractionResult(
             filename=filename,
             total_pages_or_rows=total_pages,
-            technical_clauses=select_top_by_technical_score(deduped_chunks, 20),
-            boq_items=select_top_by_technical_score(boq_items, 20, key=lambda item: item.get("description", "")),
+            technical_clauses=selected_clauses,
+            boq_items=selected_boq_items,
             has_scanned_pages=scanned_detected,
             warning_message=warning,
         )
