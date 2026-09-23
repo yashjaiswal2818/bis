@@ -8,6 +8,7 @@ import BenchmarkSandbox from './components/BenchmarkSandbox';
 import GeMClauseModal from './components/GeMClauseModal';
 import StandardDetailsModal from './components/StandardDetailsModal';
 import { checkHealth, searchStandards, generateGeMClause, getStandardDetails } from './api/client';
+import { LanguageProvider } from './i18n';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('search');
@@ -18,17 +19,6 @@ export default function App() {
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
-
-  // Language State (lifted to App so Header and SpecSearch share it)
-  const [displayLanguage, setDisplayLanguage] = useState(() => {
-    try { return localStorage.getItem('is_display_language') || 'en'; }
-    catch { return 'en'; }
-  });
-
-  const handleLanguageChange = (lang) => {
-    setDisplayLanguage(lang);
-    try { localStorage.setItem('is_display_language', lang); } catch {}
-  };
 
   // GeM Modal State
   const [isGeMModalOpen, setIsGeMModalOpen] = useState(false);
@@ -114,59 +104,58 @@ export default function App() {
   };
 
   return (
-    <div className="app-container">
-      <Header
-        isOnline={isOnline}
-        latency={engineLatency}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        displayLanguage={displayLanguage}
-        onLanguageChange={handleLanguageChange}
-      />
+    <LanguageProvider>
+      <div className="app-container">
+        <Header
+          isOnline={isOnline}
+          latency={engineLatency}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
 
-      <main className="main-wrapper" id="main-content">
-        {activeTab === 'search' && (
-          <SpecSearch
-            onOpenGeMClause={handleOpenGeMClause}
-            onViewDetails={handleViewDetails}
-            onSearch={handleSearch}
-            searchResults={searchResults}
-            isSearching={isSearching}
-            searchError={searchError}
-            onSwitchToTender={() => setActiveTab('tender')}
-            displayLanguage={displayLanguage}
-          />
-        )}
+        <main className="main-wrapper" id="main-content">
+          {activeTab === 'search' && (
+            <SpecSearch
+              onOpenGeMClause={handleOpenGeMClause}
+              onViewDetails={handleViewDetails}
+              onSearch={handleSearch}
+              searchResults={searchResults}
+              isSearching={isSearching}
+              searchError={searchError}
+              onSwitchToTender={() => setActiveTab('tender')}
+            />
+          )}
 
-        {activeTab === 'tender' && (
-          <TenderAuditor
-            onOpenGeMClause={handleOpenGeMClause}
-            onViewDetails={handleViewDetails}
-          />
-        )}
+          {activeTab === 'tender' && (
+            <TenderAuditor
+              onOpenGeMClause={handleOpenGeMClause}
+              onViewDetails={handleViewDetails}
+            />
+          )}
 
-        {activeTab === 'benchmark' && (
-          <BenchmarkSandbox />
-        )}
-      </main>
+          {activeTab === 'benchmark' && (
+            <BenchmarkSandbox />
+          )}
+        </main>
 
-      <StandardDetailsModal
-        isOpen={isDetailsOpen}
-        onClose={() => setIsDetailsOpen(false)}
-        standard={detailedStandard}
-        onOpenGeMClause={handleOpenGeMClause}
-      />
+        <StandardDetailsModal
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          standard={detailedStandard}
+          onOpenGeMClause={handleOpenGeMClause}
+        />
 
-      <GeMClauseModal
-        isOpen={isGeMModalOpen}
-        onClose={() => setIsGeMModalOpen(false)}
-        isCode={selectedISCode}
-        clauseData={clauseData}
-        isLoading={isClauseLoading}
-        error={clauseError}
-      />
+        <GeMClauseModal
+          isOpen={isGeMModalOpen}
+          onClose={() => setIsGeMModalOpen(false)}
+          isCode={selectedISCode}
+          clauseData={clauseData}
+          isLoading={isClauseLoading}
+          error={clauseError}
+        />
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </LanguageProvider>
   );
 }

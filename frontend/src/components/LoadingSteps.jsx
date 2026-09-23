@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, Circle } from 'lucide-react';
+import { useLanguage } from '../i18n';
 
-const STEPS = [
-  'Extracting technical concepts & specifications',
-  'Searching 33,553+ authentic Indian Standards catalog',
-  'Applying hardware-adaptive cross-encoder reranking',
-  'Auditing mandatory Quality Control Orders (QCOs)',
-  'Checking allied testing & safety standards',
-];
+const STEP_KEYS = ['load_step1', 'load_step2', 'load_step3', 'load_step4', 'load_step5'];
 
 export default function LoadingSteps({ query }) {
+  const { t } = useLanguage();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentStepIndex((prev) => (prev < STEPS.length - 1 ? prev + 1 : prev));
+      setCurrentStepIndex((prev) => (prev < STEP_KEYS.length - 1 ? prev + 1 : prev));
     }, 450);
     return () => clearInterval(interval);
   }, []);
@@ -22,18 +18,17 @@ export default function LoadingSteps({ query }) {
   return (
     <div className="loading-box" role="status" aria-live="polite">
       <div className="loading-header">
-        <Loader2 size={24} className="spin-icon" color="#1d4ed8" />
+        <Loader2 size={24} className="spin-icon" color="#0C4DA1" />
         <div>
-          <h4 className="loading-title">Understanding Procurement Requirement</h4>
-          <h4 className="loading-title">Reading selected BIS sources and preparing an evidence-backed analysis...</h4>
+          <h4 className="loading-title">{t('loading_title')}</h4>
           <p className="loading-subtitle">
-            Analyzing "{query.length > 55 ? query.slice(0, 55) + '...' : query}" against national standards...
+            {t('loading_subtitle', { query: query.length > 55 ? query.slice(0, 55) + '...' : query })}
           </p>
         </div>
       </div>
 
       <div className="steps-list">
-        {STEPS.map((step, idx) => {
+        {STEP_KEYS.map((stepKey, idx) => {
           const isDone = idx < currentStepIndex;
           const isActive = idx === currentStepIndex;
 
@@ -44,14 +39,14 @@ export default function LoadingSteps({ query }) {
             >
               <div className="step-icon-wrap">
                 {isDone ? (
-                  <CheckCircle2 size={15} color="#059669" />
+                  <CheckCircle2 size={15} color="#1E6B4F" />
                 ) : isActive ? (
-                  <Loader2 size={13} className="spin-icon" color="#1d4ed8" />
+                  <Loader2 size={13} className="spin-icon" color="#0C4DA1" />
                 ) : (
-                  <Circle size={10} color="#94a3b8" />
+                  <Circle size={10} color="#64708A" />
                 )}
               </div>
-              <span>{step}</span>
+              <span>{t(stepKey)}</span>
             </div>
           );
         })}

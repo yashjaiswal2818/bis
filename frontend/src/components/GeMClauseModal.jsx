@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
-import { X, Copy, Check, Download, FileText, AlertTriangle, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Copy, Check, Download, FileText, AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../i18n';
 
 export default function GeMClauseModal({ isOpen, onClose, isCode, clauseData, isLoading, error }) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -28,82 +37,47 @@ export default function GeMClauseModal({ isOpen, onClose, isCode, clauseData, is
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        {/* Modal Header */}
         <div className="modal-header">
           <div className="modal-title-group">
-            <FileText size={18} color="#1d4ed8" />
-            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
-              GeM Technical Specification Clause: {isCode}
+            <FileText size={17} color="#0C4DA1" />
+            <span className="standard-full-title" style={{ marginBottom: 0, fontSize: '1rem' }}>
+              {t('gem_title_prefix')}<span className="mono">{isCode}</span>
             </span>
           </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Close modal">
-            <X size={18} />
-          </button>
+          <button className="modal-close-btn" onClick={onClose} aria-label={t('close_modal')}><X size={18} /></button>
         </div>
 
-        {/* Modal Content */}
         <div className="modal-body">
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-              <p>Drafting official GeM & GFR 2017 compliant specification clause for <strong>{isCode}</strong>...</p>
+            <div className="audit-loading">
+              <p>{t('gem_drafting', { code: isCode })}</p>
             </div>
           ) : error ? (
-            <div style={{
-              color: '#991b1b',
-              padding: '1.25rem',
-              background: '#fef2f2',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid #fecaca',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem'
-            }}>
-              <AlertTriangle size={18} flexShrink={0} />
+            <div className="error-banner">
+              <AlertTriangle size={18} />
               <span>{error}</span>
             </div>
           ) : (
             <>
-              <div style={{
-                fontSize: '0.85rem',
-                color: '#1e40af',
-                background: '#eff6ff',
-                padding: '0.85rem 1rem',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid #bfdbfe'
-              }}>
-                <strong>Procurement Guidance (GFR 2017 Rule 144):</strong> This clause specifies standard compliance without proprietary vendor lock-in. Paste directly into your GeM Custom Bid Additional Terms & Conditions (ATC) or Tender Specification Schedule.
+              <div className="clause-guidance">
+                <strong>{t('gem_guidance_label')}</strong> {t('gem_guidance_text')}
               </div>
-
-              <textarea
-                className="clause-textarea"
-                readOnly
-                value={clauseData?.full_tender_specification_text || ''}
-              />
+              <textarea className="clause-textarea" readOnly value={clauseData?.full_tender_specification_text || ''} />
             </>
           )}
         </div>
 
-        {/* Modal Footer */}
         <div className="modal-footer">
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            Compliance: Bureau of Indian Standards Act, 2016 & GeM Procurement Manual
+          <span style={{ fontSize: '0.78rem', color: 'var(--ink-muted)' }}>
+            {t('gem_compliance_footer')}
           </span>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
-            <button
-              className="btn-action-outline"
-              onClick={handleDownload}
-              disabled={isLoading || !clauseData}
-            >
-              <Download size={14} />
-              <span>Download (.txt)</span>
+            <button className="btn-action-outline" onClick={handleDownload} disabled={isLoading || !clauseData}>
+              <Download size={14} /><span>{t('download_txt')}</span>
             </button>
-            <button
-              className="btn-action-primary"
-              onClick={handleCopy}
-              disabled={isLoading || !clauseData}
-            >
-              {copied ? <Check size={14} color="#059669" /> : <Copy size={14} />}
-              <span>{copied ? 'Copied to Clipboard!' : 'Copy Clause for GeM'}</span>
+            <button className="btn-action-primary" onClick={handleCopy} disabled={isLoading || !clauseData}>
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              <span>{copied ? t('copied_clipboard') : t('copy_clause_gem')}</span>
             </button>
           </div>
         </div>

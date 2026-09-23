@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Play, Download, CheckCircle, Terminal, Award, Activity, Loader2 } from 'lucide-react';
+import { Play, Download, Activity, Loader2 } from 'lucide-react';
 import { judgeSearch } from '../api/client';
+import { useLanguage } from '../i18n';
 
 const BENCHMARK_QUERIES = [
   { id: "PUB-01", query: "We are a small enterprise manufacturing 33 Grade Ordinary Portland Cement. Which BIS standard covers the chemical and physical requirements?", expected: "IS 269: 1989" },
@@ -16,6 +17,7 @@ const BENCHMARK_QUERIES = [
 ];
 
 export default function BenchmarkSandbox() {
+  const { t } = useLanguage();
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState('');
   const [metrics, setMetrics] = useState(null);
@@ -42,21 +44,13 @@ export default function BenchmarkSandbox() {
         totalLatency += res.latency_seconds;
         const retrieved = res.retrieved_standards || [];
 
-        results.push({
-          id: q.id,
-          query: q.query,
-          expected_standards: [q.expected],
-          retrieved_standards: retrieved,
-          latency_seconds: res.latency_seconds,
-        });
+        results.push({ id: q.id, query: q.query, expected_standards: [q.expected], retrieved_standards: retrieved, latency_seconds: res.latency_seconds });
 
-        // Hit@3
         const top3Norm = retrieved.slice(0, 3).map(norm);
         const expNorm = norm(q.expected);
         const isHit = top3Norm.includes(expNorm);
         if (isHit) hitsAt3++;
 
-        // MRR@5
         const top5Norm = retrieved.slice(0, 5).map(norm);
         const rankIdx = top5Norm.indexOf(expNorm);
         const rr = rankIdx >= 0 ? 1.0 / (rankIdx + 1) : 0.0;
@@ -69,12 +63,7 @@ export default function BenchmarkSandbox() {
       const mrr = reciprocalRanks.reduce((a, b) => a + b, 0) / BENCHMARK_QUERIES.length;
       const avgLat = totalLatency / BENCHMARK_QUERIES.length;
 
-      setMetrics({
-        hitRate: hitRate.toFixed(1),
-        mrr: mrr.toFixed(3),
-        avgLatency: avgLat.toFixed(2),
-      });
-
+      setMetrics({ hitRate: hitRate.toFixed(1), mrr: mrr.toFixed(3), avgLatency: avgLat.toFixed(2) });
       setTeamResults(results);
 
       setLogs((prev) => prev + `\n========================================\n` +
@@ -105,77 +94,48 @@ export default function BenchmarkSandbox() {
 
   return (
     <div className="benchmark-container">
-      {/* Overview Banner */}
       <div className="officer-banner">
         <Activity size={20} className="officer-banner-icon" />
         <div className="officer-banner-text">
-          <h3>Information Retrieval & Evaluation Benchmark</h3>
-          <p>
-            Evaluates the offline hybrid retrieval pipeline (BM25 lexical search + BGE-M3 1024-d dense vector index + Cross-Encoder reranking) against curated government procurement benchmark queries.
-          </p>
+          <h3>{t('bench_banner_title')}</h3>
+          <p>{t('bench_banner_desc')}</p>
         </div>
       </div>
 
-      {/* Action Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <button
-          className="btn-primary-search"
-          onClick={runBenchmark}
-          disabled={isRunning}
-        >
-          {isRunning ? (
-            <>
-              <Loader2 size={16} className="spin-icon" />
-              <span>Running Benchmark ({BENCHMARK_QUERIES.length} Queries)...</span>
-            </>
-          ) : (
-            <>
-              <Play size={16} />
-              <span>Execute Evaluation Suite</span>
-            </>
-          )}
+      <div className="benchmark-controls">
+        <button className="btn-primary-search" onClick={runBenchmark} disabled={isRunning}>
+          {isRunning ? (<><Loader2 size={16} className="spin-icon" /><span>{t('bench_running', { n: BENCHMARK_QUERIES.length })}</span></>)
+            : (<><Play size={16} /><span>{t('bench_execute')}</span></>)}
         </button>
-
         {teamResults && (
           <button className="btn-action-outline" onClick={handleDownloadResults}>
-            <Download size={15} />
-            <span>Download team_results.json</span>
+            <Download size={15} /><span>{t('bench_download')}</span>
           </button>
         )}
       </div>
 
-      {/* Metrics Dashboard */}
       {metrics && (
         <div className="benchmark-metrics-grid">
           <div className="metric-card">
-            <div className="metric-label">Hit Rate @ 3</div>
-            <div className="metric-value" style={{ color: '#059669' }}>
-              {metrics.hitRate}%
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Target: &gt;80.0%</span>
+            <div className="metric-label">{t('bench_hit_rate')}</div>
+            <div className="metric-value" style={{ color: '#1E6B4F' }}>{metrics.hitRate}%</div>
+            <span className="metric-target">{t('bench_target_80')}</span>
           </div>
-
           <div className="metric-card">
-            <div className="metric-label">MRR @ 5</div>
-            <div className="metric-value" style={{ color: 'var(--primary-blue)' }}>
-              {metrics.mrr}
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Mean Reciprocal Rank</span>
+            <div className="metric-label">{t('bench_mrr')}</div>
+            <div className="metric-value" style={{ color: 'var(--seal)' }}>{metrics.mrr}</div>
+            <span className="metric-target">{t('bench_mrr_sub')}</span>
           </div>
-
           <div className="metric-card">
-            <div className="metric-label">Avg Search Latency</div>
-            <div className="metric-value" style={{ color: 'var(--primary-navy)' }}>
-              {metrics.avgLatency}s
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Hardware-Adaptive Target: &lt;5s</span>
+            <div className="metric-label">{t('bench_avg_latency')}</div>
+            <div className="metric-value" style={{ color: 'var(--ink)' }}>{metrics.avgLatency}s</div>
+            <span className="metric-target">{t('bench_latency_target')}</span>
           </div>
         </div>
       )}
 
-      {/* Terminal Log Console */}
-      <div className="terminal-box" aria-label="Evaluation Console Output">
-        {logs || '> Standby. Click "Execute Evaluation Suite" to run public test queries...'}
+      <div className="terminal-box" aria-label="Evaluation console output">
+        {logs || t('bench_standby')}
       </div>
     </div>
   );

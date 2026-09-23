@@ -26,6 +26,9 @@ frontend/node_modules/
 dist/
 .next/
 
+# Design tooling working directory (review screenshots, decision logs -- not shipped content)
+.impeccable/
+
 # OS / Editor files
 .DS_Store
 Thumbs.db

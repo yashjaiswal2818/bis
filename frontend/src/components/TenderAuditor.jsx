@@ -1,38 +1,23 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileSpreadsheet, FileText, Download, CheckCircle, AlertTriangle, Loader2, Info, ArrowUpRight } from 'lucide-react';
+import { Upload, FileText, Download, CheckCircle, AlertTriangle, Loader2, Info } from 'lucide-react';
 import { auditTenderFile, exportPdfReport } from '../api/client';
+import { useLanguage } from '../i18n';
 
 // Four states, one per parsed line item. NO_CONFIDENT_MATCH is the default: an item the
 // engine could not assess is not an item that passed.
 const AUDIT_STATE_ORDER = ['COMPLIANT', 'QCO_REQUIRED', 'STANDARD_SUGGESTED', 'NO_CONFIDENT_MATCH'];
 
 const AUDIT_STATE_META = {
-  COMPLIANT: {
-    label: 'Compliant',
-    tone: 'green',
-    hint: 'Matched at HIGH confidence, no unmet certification',
-  },
-  QCO_REQUIRED: {
-    label: 'QCO required',
-    tone: 'amber',
-    hint: 'Mandatory ISI / CRS / Hallmark not referenced',
-  },
-  STANDARD_SUGGESTED: {
-    label: 'Standard suggested',
-    tone: 'blue',
-    hint: 'No IS code in the item text; one matched at HIGH',
-  },
-  NO_CONFIDENT_MATCH: {
-    label: 'Not assessed',
-    tone: 'grey',
-    hint: 'Confidence below HIGH, or no match found',
-  },
+  COMPLIANT: { labelKey: 'audit_state_compliant', tone: 'green', hintKey: 'audit_state_compliant_hint' },
+  QCO_REQUIRED: { labelKey: 'audit_state_qco', tone: 'amber', hintKey: 'audit_state_qco_hint' },
+  STANDARD_SUGGESTED: { labelKey: 'audit_state_suggested', tone: 'blue', hintKey: 'audit_state_suggested_hint' },
+  NO_CONFIDENT_MATCH: { labelKey: 'audit_state_none', tone: 'grey', hintKey: 'audit_state_none_hint' },
 };
 
-const normalizeAuditState = (state) =>
-  AUDIT_STATE_ORDER.includes(state) ? state : 'NO_CONFIDENT_MATCH';
+const normalizeAuditState = (state) => (AUDIT_STATE_ORDER.includes(state) ? state : 'NO_CONFIDENT_MATCH');
 
 export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
+  const { t } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const [isAuditing, setIsAuditing] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -41,28 +26,14 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
   const [currentFileName, setCurrentFileName] = useState('');
   const fileInputRef = useRef(null);
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => setIsDragging(false);
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files?.length > 0) processFile(e.dataTransfer.files[0]);
   };
-
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      processFile(e.target.files[0]);
-    }
-  };
+  const handleFileChange = (e) => { if (e.target.files?.length > 0) processFile(e.target.files[0]); };
 
   const processFile = async (file) => {
     setIsAuditing(true);
@@ -105,7 +76,6 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
 
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += 'Item / Technical Specification,Quantity,Unit,Recommended IS Codes,Compliance Status,Missing IS Code,Missing Hallmark / Mark,Verdict\n';
-
     items.forEach((item) => {
       const desc = (item.item_description || item.clause_text || '').replace(/"/g, '""');
       const qty = item.quantity || 'N/A';
@@ -116,7 +86,6 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
       const missingCode = (cv.missing_is_code || 'None').replace(/"/g, '""');
       const missingMark = (cv.missing_mark_label || 'None').replace(/"/g, '""');
       const verdict = (cv.audit_status_reason || cv.verdict || 'Not assessed').replace(/"/g, '""');
-
       csvContent += `"${desc}","${qty}","${unit}","${codes}","${status}","${missingCode}","${missingMark}","${verdict}"\n`;
     });
 
@@ -133,19 +102,16 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
 
   return (
     <div className="tender-auditor-container">
-      {/* Officer Advisory Banner */}
       <div className="officer-banner">
         <Info size={20} className="officer-banner-icon" />
         <div className="officer-banner-text">
-          <h3>Tender Document & Bill of Quantities (BoQ) Auditor</h3>
+          <h3>{t('tender_banner_title')}</h3>
           <p>
-            Upload your Notice Inviting Tender (NIT) PDF, technical specifications document, or Schedule of Quantities (CSV) from CPWD/MES/GeM/CPPP.
-            The engine automatically isolates the scope of work, audits technical line items against BIS standards, and flags mandatory ISI/CRS certification rules under the BIS Act, 2016.
+            {t('tender_banner_desc')}
           </p>
         </div>
       </div>
 
-      {/* Dropzone Area */}
       <div
         className={`dropzone-box ${isDragging ? 'drag-over' : ''}`}
         onDragOver={handleDragOver}
@@ -153,109 +119,54 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          accept=".pdf,.csv"
-          onChange={handleFileChange}
-        />
+        <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".pdf,.csv" onChange={handleFileChange} />
         <Upload className="dropzone-icon" />
         <div>
-          <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary-navy)', marginBottom: '0.35rem' }}>
-            Upload Draft Tender PDF or BoQ Schedule (CSV)
-          </h4>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            Drag & drop tender document here, or click to browse (supports .pdf NIT notices, technical specs, and .csv BoQs)
-          </p>
+          <h4 className="dropzone-title">{t('dropzone_title')}</h4>
+          <p className="dropzone-sub">{t('dropzone_sub')}</p>
         </div>
       </div>
 
-      {/* Loading Progress */}
       {isAuditing && (
-        <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--primary-blue)' }}>
-          <Loader2 size={32} className="spin-icon" style={{ margin: '0 auto 0.75rem' }} />
-          <p style={{ fontWeight: 600, color: 'var(--primary-navy)' }}>
-            Auditing {currentFileName} against Indian Standards & QCOs...
-            Reading selected BIS sources and auditing {currentFileName} against QCO mandates...
-          </p>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Parsing engineering clauses, decomposing work scope & matching authentic IS codes
-            Preparing an evidence-backed compliance analysis of technical specifications
-          </span>
+        <div className="audit-loading">
+          <Loader2 size={30} className="spin-icon" color="#0C4DA1" />
+          <p>{t('audit_loading_title', { file: currentFileName })}</p>
+          <span>{t('audit_loading_sub')}</span>
         </div>
       )}
 
-      {/* Error Message */}
       {auditError && (
-        <div style={{
-          background: '#fef2f2',
-          border: '1px solid #fecaca',
-          borderRadius: 'var(--radius-md)',
-          padding: '1rem 1.25rem',
-          color: '#991b1b',
-          marginTop: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.6rem'
-        }}>
+        <div className="error-banner" style={{ marginTop: '1.5rem' }}>
           <AlertTriangle size={18} />
           <span>{auditError}</span>
         </div>
       )}
 
-      {/* Audit Results Table */}
       {auditResult && (
         <div style={{ marginTop: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div className="audit-results-header">
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
-                Audit Results: {currentFileName}
-              </h3>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Document Format: {auditResult.type?.toUpperCase()} | Line items assessed:{' '}
-                {auditResult.items_assessed ?? items.length}
-                {auditResult.items_parsed > (auditResult.items_assessed ?? items.length)
-                  ? ` of ${auditResult.items_parsed} parsed`
-                  : ''}
+              <h3 className="audit-results-title">{t('audit_results_title', { file: currentFileName })}</h3>
+              <span className="audit-results-meta">
+                {t('audit_meta', { fmt: auditResult.type?.toUpperCase(), n: auditResult.items_assessed ?? items.length })}
+                {auditResult.items_parsed > (auditResult.items_assessed ?? items.length) ? t('audit_meta_of_parsed', { total: auditResult.items_parsed }) : ''}
               </span>
             </div>
-
-            <button className="btn-action-outline" onClick={handleExportAuditedBoQ}>
-              <Download size={15} />
-              <span>Export Audited Schedule (.csv)</span>
-            </button>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                className="btn-action-outline" 
-                onClick={handleExportPdf}
-                disabled={isExportingPdf}
-              >
-                {isExportingPdf ? <Loader2 size={15} className="spin" /> : <FileText size={15} />}
-                <span>{isExportingPdf ? 'Generating...' : 'Export Audit Report (PDF)'}</span>
+            <div className="audit-export-actions">
+              <button className="btn-action-outline" onClick={handleExportPdf} disabled={isExportingPdf}>
+                {isExportingPdf ? <Loader2 size={15} className="spin-icon" /> : <FileText size={15} />}
+                <span>{isExportingPdf ? t('generating') : t('export_pdf')}</span>
               </button>
               <button className="btn-action-outline" onClick={handleExportAuditedBoQ}>
-                <Download size={15} />
-                <span>Export Audited Schedule (.csv)</span>
+                <Download size={15} /><span>{t('export_csv')}</span>
               </button>
             </div>
           </div>
 
           {auditResult.warning && (
-            <div style={{
-              background: '#fffbeb',
-              border: '1px solid #fde68a',
-              borderRadius: 'var(--radius-md)',
-              padding: '0.8rem 1rem',
-              color: '#92400e',
-              fontSize: '0.84rem',
-              marginBottom: '1rem'
-            }}>
-              <strong>Notice:</strong> {auditResult.warning}
-            </div>
+            <div className="audit-warning-notice"><strong>{t('notice_label')}</strong> {auditResult.warning}</div>
           )}
 
-          {/* Every parsed line item is counted here, including the ones with nothing wrong. */}
           <div className="audit-summary-strip">
             {AUDIT_STATE_ORDER.map((state) => {
               const meta = AUDIT_STATE_META[state];
@@ -263,8 +174,8 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
               return (
                 <div key={state} className={`audit-summary-cell audit-state-${meta.tone}`}>
                   <span className="audit-summary-count">{count}</span>
-                  <span className="audit-summary-label">{meta.label}</span>
-                  <span className="audit-summary-hint">{meta.hint}</span>
+                  <span className="audit-summary-label">{t(meta.labelKey)}</span>
+                  <span className="audit-summary-hint">{t(meta.hintKey)}</span>
                 </div>
               );
             })}
@@ -274,9 +185,7 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
             <div className="audit-cap-notice">
               <AlertTriangle size={15} />
               <span>
-                Showing first <strong>{auditResult.items_assessed}</strong> of{' '}
-                <strong>{auditResult.items_parsed}</strong> parsed line items. Each item runs a full
-                hybrid search, so the audit is capped at {auditResult.audit_cap} per upload.
+                {t('audit_cap_notice', { n: auditResult.items_assessed, m: auditResult.items_parsed, cap: auditResult.audit_cap })}
               </span>
             </div>
           )}
@@ -286,86 +195,50 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
               <thead>
                 <tr>
                   <th style={{ width: '4%' }}>#</th>
-                  <th style={{ width: '32%' }}>Tender Item / Specification Clause</th>
-                  <th style={{ width: '14%' }}>Status</th>
-                  <th style={{ width: '8%' }}>Quantity</th>
-                  <th style={{ width: '32%' }}>Recommended Indian Standards</th>
-                  <th style={{ width: '10%' }}>Actions</th>
+                  <th style={{ width: '32%' }}>{t('tbl_item_spec')}</th>
+                  <th style={{ width: '14%' }}>{t('tbl_status')}</th>
+                  <th style={{ width: '8%' }}>{t('tbl_quantity')}</th>
+                  <th style={{ width: '32%' }}>{t('tbl_recommended')}</th>
+                  <th style={{ width: '10%' }}>{t('tbl_actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
-                      No technical line items identified in this document.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="table-empty">{t('no_items_found')}</td></tr>
                 ) : (
                   items.map((item, idx) => {
                     const state = normalizeAuditState(item.compliance_verdict?.audit_status);
                     const meta = AUDIT_STATE_META[state];
                     return (
-                    <tr key={idx}>
-                      <td style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{idx + 1}</td>
-                      <td>
-                        <div style={{ fontWeight: 600, color: 'var(--primary-navy)', marginBottom: '0.2rem', lineHeight: 1.45 }}>
-                          {item.item_description || item.clause_text}
-                        </div>
-                      </td>
-                      <td>
-                        <span
-                          className={`audit-chip audit-state-${meta.tone}`}
-                          title={item.compliance_verdict?.audit_status_reason || meta.hint}
-                        >
-                          {meta.label}
-                        </span>
-                      </td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                        {item.quantity ? `${item.quantity} ${item.unit || ''}` : 'Clause'}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <tr key={idx}>
+                        <td className="item-index">{idx + 1}</td>
+                        <td><div className="item-desc">{item.item_description || item.clause_text}</div></td>
+                        <td><span className={`audit-chip audit-state-${meta.tone}`} title={item.compliance_verdict?.audit_status_reason || t(meta.hintKey)}>{t(meta.labelKey)}</span></td>
+                        <td className="item-qty">{item.quantity ? `${item.quantity} ${item.unit || ''}` : t('clause_fallback')}</td>
+                        <td>
                           {item.recommended_standards?.map((rec, rIdx) => (
-                            <div key={rIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--primary-blue)', fontSize: '0.82rem' }}>
-                                {rec.is_code}
-                              </span>
-                              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                                ({rec.title})
-                              </span>
-                              <span className={`badge ${rec.confidence === 'HIGH' ? 'badge-emerald' : 'badge-amber'}`} style={{ fontSize: '0.68rem' }}>
-                                {rec.confidence}
-                              </span>
+                            <div key={rIdx} className="rec-standard-row">
+                              <span className="rec-code mono">{rec.is_code}</span>
+                              <span className="rec-title">({rec.title})</span>
+                              <span className={`badge ${rec.confidence === 'HIGH' ? 'badge-emerald' : 'badge-amber'}`} style={{ fontSize: '0.68rem' }}>{rec.confidence}</span>
                             </div>
                           ))}
-                        </div>
-                      </td>
-                      <td>
-                        {item.recommended_standards?.[0] && (
-                          <div style={{ display: 'flex', gap: '0.35rem' }}>
-                            <button
-                              className="btn-action-primary"
-                              style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem' }}
-                              onClick={() => onOpenGeMClause(item.recommended_standards[0].is_code)}
-                              title="Generate GeM Procurement Clause"
-                            >
-                              <FileText size={12} />
-                              <span>GeM</span>
-                            </button>
-                            {onViewDetails && (
-                              <button
-                                className="btn-action-outline"
-                                style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem' }}
-                                onClick={() => onViewDetails(item.recommended_standards[0])}
-                                title="View Standard Details"
-                              >
-                                <span>Details</span>
+                        </td>
+                        <td>
+                          {item.recommended_standards?.[0] && (
+                            <div className="row-actions">
+                              <button className="btn-action-primary" onClick={() => onOpenGeMClause(item.recommended_standards[0].is_code)} title="Generate GeM procurement clause">
+                                <FileText size={12} /><span>{t('row_gem')}</span>
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                              {onViewDetails && (
+                                <button className="btn-action-outline" onClick={() => onViewDetails(item.recommended_standards[0])} title="View standard details">
+                                  <span>{t('row_details')}</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
                     );
                   })
                 )}
@@ -373,7 +246,6 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
             </table>
           </div>
 
-          {/* Bottom Audit Section: QCO_REQUIRED items only. Everything else is in the table. */}
           {items.length > 0 && (() => {
             const qcoItems = items
               .map((item, idx) => ({ item, index: idx + 1 }))
@@ -381,8 +253,7 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
 
             const missingISItems = qcoItems
               .map(({ item, index }) => ({
-                index,
-                desc: item.item_description || item.clause_text,
+                index, desc: item.item_description || item.clause_text,
                 missing_is_code: item.compliance_verdict?.missing_is_code,
                 is_missing: Boolean(item.compliance_verdict?.is_code_missing),
               }))
@@ -392,19 +263,10 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
               .map(({ item, index }) => {
                 const cv = item.compliance_verdict;
                 let mark = null;
-                if (cv?.hallmark_missing) {
-                  mark = cv.missing_hallmark || 'Mandatory BIS Hallmark with 6-digit HUID (Scheme-IV)';
-                } else if (cv?.isi_mark_missing) {
-                  mark = cv.missing_isi_mark || 'Mandatory BIS ISI Mark (Scheme-I under QCO)';
-                } else if (cv?.crs_missing) {
-                  mark = cv.missing_crs || 'Mandatory BIS CRS Registration (Scheme-II)';
-                }
-                return {
-                  index,
-                  desc: item.item_description || item.clause_text,
-                  missing_mark: mark,
-                  is_missing: Boolean(mark),
-                };
+                if (cv?.hallmark_missing) mark = cv.missing_hallmark || t('mark_hallmark_fallback');
+                else if (cv?.isi_mark_missing) mark = cv.missing_isi_mark || t('mark_isi_fallback');
+                else if (cv?.crs_missing) mark = cv.missing_crs || t('mark_crs_fallback');
+                return { index, desc: item.item_description || item.clause_text, missing_mark: mark, is_missing: Boolean(mark) };
               })
               .filter((it) => it.is_missing);
 
@@ -414,15 +276,11 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
               <div className="audit-bottom-container">
                 {isEverythingFine ? (
                   <div className="audit-bottom-card audit-bottom-fine">
-                    <CheckCircle size={32} style={{ color: '#059669', flexShrink: 0 }} />
+                    <CheckCircle size={30} />
                     <div>
-                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#065f46', margin: '0 0 0.25rem 0' }}>
-                        No unmet certification obligations
-                      </h4>
-                      <p style={{ margin: 0, fontSize: '0.88rem', color: '#047857', lineHeight: 1.45 }}>
-                        No assessed line item carries a mandatory ISI, CRS or Hallmark requirement that
-                        the tender text fails to reference. Per-item status for every row is in the table above —
-                        items marked <strong>Not assessed</strong> were not checked and still need manual review.
+                      <h4>{t('audit_fine_title')}</h4>
+                      <p>
+                        {t('audit_fine_text')}
                       </p>
                     </div>
                   </div>
@@ -430,59 +288,38 @@ export default function TenderAuditor({ onOpenGeMClause, onViewDetails }) {
                   <div className="audit-bottom-card audit-bottom-warning">
                     <div className="audit-bottom-header">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        <AlertTriangle size={22} style={{ color: '#dc2626' }} />
-                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0 }}>
-                          Audit Findings: Missing Indian Standards & Hallmarks
-                        </h4>
+                        <AlertTriangle size={20} color="#D51820" />
+                        <h4>{t('audit_warning_title')}</h4>
                       </div>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        Statutory compliance under BIS Act 2016 & Line Ministry QCOs
-                      </span>
+                      <span className="audit-bottom-meta">{t('audit_warning_meta')}</span>
                     </div>
 
-                    {/* 1. Missing Indian Standards */}
                     {missingISItems.length > 0 && (
                       <div className="missing-group-box">
-                        <div className="missing-group-title">
-                          <AlertTriangle size={15} />
-                          <span>Missing Indian Standards (IS Codes) in Tender Clauses:</span>
-                        </div>
+                        <div className="missing-group-title"><AlertTriangle size={15} /><span>{t('missing_is_title')}</span></div>
                         <div className="missing-items-list">
                           {missingISItems.map((mItem, idx) => (
                             <div key={idx} className="missing-item-row">
-                              <span className="missing-item-num">Item #{mItem.index}:</span>
-                              <span className="missing-item-desc" title={mItem.desc}>
-                                {mItem.desc}
-                              </span>
-                              <span className="missing-arrow">➔</span>
-                              <span className="missing-solution-badge is-badge">
-                                Missing IS Code: <strong>{mItem.missing_is_code}</strong>
-                                Missing IS Code: <strong style={{ fontFamily: 'var(--font-mono)' }}>{mItem.missing_is_code}</strong>
-                              </span>
+                              <span className="missing-item-num">{t('missing_item_num', { n: mItem.index })}</span>
+                              <span className="missing-item-desc" title={mItem.desc}>{mItem.desc}</span>
+                              <span className="missing-arrow">→</span>
+                              <span className="missing-solution-badge">{t('missing_is_badge', { code: mItem.missing_is_code })}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {/* 2. Missing Hallmarks & Mandatory Quality Certifications */}
                     {missingMarkItems.length > 0 && (
                       <div className="missing-group-box">
-                        <div className="missing-group-title hallmark-title">
-                          <AlertTriangle size={15} />
-                          <span>Missing Mandatory Hallmarks & Quality Certifications:</span>
-                        </div>
+                        <div className="missing-group-title hallmark-title"><AlertTriangle size={15} /><span>{t('missing_mark_title')}</span></div>
                         <div className="missing-items-list">
                           {missingMarkItems.map((mItem, idx) => (
                             <div key={idx} className="missing-item-row">
-                              <span className="missing-item-num">Item #{mItem.index}:</span>
-                              <span className="missing-item-desc" title={mItem.desc}>
-                                {mItem.desc}
-                              </span>
-                              <span className="missing-arrow">➔</span>
-                              <span className="missing-solution-badge hallmark-badge">
-                                Missing Hallmark / Mark: <strong>{mItem.missing_mark}</strong>
-                              </span>
+                              <span className="missing-item-num">{t('missing_item_num', { n: mItem.index })}</span>
+                              <span className="missing-item-desc" title={mItem.desc}>{mItem.desc}</span>
+                              <span className="missing-arrow">→</span>
+                              <span className="missing-solution-badge hallmark-badge">{t('missing_mark_badge', { mark: mItem.missing_mark })}</span>
                             </div>
                           ))}
                         </div>
